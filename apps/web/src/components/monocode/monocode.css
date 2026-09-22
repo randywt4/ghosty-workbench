@@ -1,0 +1,92 @@
+/* MonoCode bb3924b Composer.tsx and styles/index.css, adapted to T3 tokens.
+   Scope the donor appearance to the transplanted controls, preserving T3 themes. */
+.monocode-composer .composer-tiptap {
+  min-height: 44px;
+  max-height: 160px;
+  line-height: 1.5714;
+}
+
+.monocode-composer [data-chat-composer-footer="true"] {
+  padding-inline: 10px;
+  padding-bottom: 8px;
+}
+
+.monocode-composer [data-chat-composer-footer-controls="true"] {
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.monocode-composer button[type="submit"] {
+  border-radius: 6px;
+}
+
+.monocode-composer button[type="submit"]:not(:disabled) {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.monocode-composer button[type="submit"]:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 90%, transparent);
+}
+
+@media (pointer: coarse) {
+  .monocode-composer button[type="submit"],
+  .monocode-composer button[aria-label="Attach files"] {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+/* Donor controls are 26px, with one gray surface per picker and a 4px gap. */
+.monocode-composer .monocode-control {
+  font-size: 11px;
+  font-weight: 400;
+}
+.monocode-composer [data-chat-composer-footer-controls] > [data-slot="separator"],
+.monocode-composer [data-resting-block] [data-slot="separator"] {
+  display: none;
+}
+.monocode-composer [data-resting-block] {
+  gap: 4px;
+}
+.monocode-composer [data-composer-control-chevron] {
+  width: 12px;
+  height: 12px;
+  opacity: 0.5;
+}
+.monocode-composer [data-composer-control-icon] {
+  width: 14px;
+  height: 14px;
+}
+.monocode-composer .monocode-attach svg {
+  width: 14px;
+  height: 14px;
+}
+.monocode-sidebar {
+  --sidebar-row-active: color-mix(in srgb, var(--sidebar-foreground) 10%, var(--sidebar));
+}
+.dark .monocode-sidebar {
+  --sidebar: #1e1e1e;
+  --sidebar-row-hover: #292929;
+  --sidebar-row-active: #333;
+}
+.monocode-legacy-row {
+  height: auto;
+  min-height: 78px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+.monocode-legacy-row [data-testid^="thread-title-"] {
+  font-size: 13px;
+  font-weight: 600;
+}
+@media (pointer: coarse) {
+  .monocode-composer .monocode-primary-action,
+  .monocode-composer .monocode-attach {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}

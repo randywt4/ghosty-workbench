@@ -247,7 +247,10 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           side="left"
           collapsible="offcanvas"
           data-app-sidebar=""
-          className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
+          className={cn(
+            "border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
+            legacySidebarEnabled && "monocode-sidebar",
+          )}
           resizable={{
             maxWidth: sidebarMaximumWidth,
             minWidth: THREAD_SIDEBAR_MIN_WIDTH,
