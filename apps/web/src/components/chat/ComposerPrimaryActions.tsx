@@ -113,7 +113,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           <button
             type="button"
             className={cn(
-              "monocode-primary-action grid cursor-pointer place-items-center rounded-md bg-foreground text-background hover:bg-foreground/90 [&_svg]:pointer-events-none",
+              "monocode-primary-action grid cursor-pointer place-items-center rounded-md bg-white text-black hover:bg-white/90 [&_svg]:pointer-events-none",
               "size-6.5",
             )}
             {...pointerFocusProps}
@@ -273,8 +273,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     <button
       type="submit"
       className={cn(
-        "monocode-primary-action relative grid size-6.5 place-items-center overflow-hidden rounded-md enabled:cursor-pointer disabled:cursor-default disabled:opacity-30 [&_svg]:pointer-events-none",
-        "bg-foreground text-background enabled:hover:opacity-90",
+        "composer-send primary-action monocode-primary-action relative grid size-6.5 place-items-center overflow-hidden rounded-md disabled:cursor-default [&_svg]:pointer-events-none",
       )}
       {...pointerFocusProps}
       onClick={onSubmitMessage}

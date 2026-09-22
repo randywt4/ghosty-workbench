@@ -6,6 +6,7 @@ import { create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const state = vi.hoisted(() => ({
+  appearance: {} as Record<string, { mutedUntil?: number }>,
   mode: "off" as ClientSettings["notificationMode"],
   inApp: true,
   active: { environmentId: "env-1", threadId: "other-thread" },
@@ -95,6 +96,12 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => state.navigate,
   useParams: () => state.active,
 }));
+vi.mock("../state/entities", () => ({
+  readProject: () => ({ environmentId: "env-1", workspaceRoot: "/project" }),
+}));
+vi.mock("../uiStateStore", () => ({
+  useUiStateStore: { getState: () => ({ projectAppearanceByKey: state.appearance }) },
+}));
 vi.mock("../hooks/useSettings", () => ({
   useClientSettings: (
     select: (
@@ -137,6 +144,7 @@ async function complete() {
 beforeEach(() => {
   vi.clearAllMocks();
   Object.assign(state, {
+    appearance: {},
     mode: "off",
     inApp: true,
     active: { environmentId: "env-1", threadId: "other-thread" },
@@ -172,6 +180,37 @@ afterEach(async () => {
 });
 
 describe("thread notifications", () => {
+  it.each([true, false])(
+    "mutes all project alerts without replay on unmute, focused=%s",
+    async (focused) => {
+      state.mode = "notifications-and-sound";
+      state.focused = focused;
+      state.appearance = { "env-1:/project": { mutedUntil: 0 } };
+      await render();
+      await complete();
+      expect(state.sound).not.toHaveBeenCalled();
+      expect(state.add).not.toHaveBeenCalled();
+      expect(state.notification).not.toHaveBeenCalled();
+      state.appearance = {};
+      await render();
+      expect(state.sound).not.toHaveBeenCalled();
+      expect(state.add).not.toHaveBeenCalled();
+      expect(state.notification).not.toHaveBeenCalled();
+      state.input = true;
+      await render();
+      expect(state.sound).toHaveBeenCalledTimes(1);
+      expect(focused ? state.add : state.notification).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("does not mute an unrelated project's events", async () => {
+    state.appearance = {
+      "another-env:/project": { mutedUntil: 0 },
+      "env-1:/other": { mutedUntil: 0 },
+    };
+    await render();
+    await complete();
+    expect(state.add).toHaveBeenCalledTimes(1);
+  });
   it.each([true, false])("keeps subagents silent with focus=%s", async (focused) => {
     state.subagent = true;
     state.focused = focused;

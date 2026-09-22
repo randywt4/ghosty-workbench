@@ -8,14 +8,6 @@ import type {
   RunId,
   ThreadId,
 } from "@t3tools/contracts";
-import {
-  Clock3Icon,
-  CornerUpRightIcon,
-  GripVerticalIcon,
-  ListOrderedIcon,
-  PencilIcon,
-  PauseIcon,
-} from "lucide-react";
 import { useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 
 import { useAssetUrls } from "../../assets/assetUrls";
@@ -23,10 +15,21 @@ import { threadEnvironment } from "../../state/threads";
 import { useThreadProjection } from "../../state/entities";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { isImageAttachment, type ChatMessage } from "../../types";
-import { cn } from "~/lib/utils";
-import { ComposerBanner } from "./ComposerBanner";
-import { Button } from "../ui/button";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  MonocodeQueueCancelEditButton,
+  MonocodeQueueCard,
+  MonocodeQueueEditButton,
+  MonocodeQueueGripButton,
+  MonocodeQueueHeaderToggle,
+  MonocodeQueueLabel,
+  MonocodeQueuePendingMark,
+  MonocodeQueueRemoveButton,
+  MonocodeQueueRow,
+  MonocodeQueueRowIcon,
+  MonocodeQueueShell,
+  MonocodeQueueSteerButton,
+} from "./MonocodeQueuedRunsCard";
 
 export interface EditQueuedRunRequest {
   readonly runId: RunId;
@@ -246,160 +249,120 @@ export function QueuedRunsControl({
     }
   };
 
+  // Donor-exact queue card with no ComposerBanner wrappers: the MonoCode queue
+  // sits directly above the composer box, without T3's glass overlay or the
+  // attachment-overlap negative margin. ChatComposer must mount this control
+  // outside ComposerBanner.Dock for that seam to hold.
   return (
-    <ComposerBanner.Attachment>
-      <ComposerBanner.Root
-        role="region"
-        aria-label={`${items.length} queued message${items.length === 1 ? "" : "s"}`}
-        aria-live="polite"
-        data-chat-composer-collapsed-controls="true"
-        className="relative z-0"
+    <MonocodeQueueShell
+      role="region"
+      aria-label={`${items.length} queued message${items.length === 1 ? "" : "s"}`}
+      aria-live="polite"
+      data-chat-composer-collapsed-controls="true"
+    >
+      <MonocodeQueueCard
+        paused={workflow?.isHeld === true}
+        resumeDisabled={resuming || busyRunId !== null}
+        onResume={() => {
+          setResuming(true);
+          void resume({
+            environmentId: props.environmentId,
+            input: { threadId: props.threadId },
+          }).finally(() => setResuming(false));
+        }}
       >
-        <ComposerBanner.Row
-          render={<button type="button" />}
-          aria-label={expanded ? "Collapse queued messages" : "Expand queued messages"}
-          aria-expanded={expanded}
-          aria-controls={queueListId}
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          <ComposerBanner.Icon>
-            <ListOrderedIcon />
-          </ComposerBanner.Icon>
-          <ComposerBanner.Content className="text-muted-foreground">
-            {workflow?.isHeld ? "Queue held after restart" : "Queued"}
-          </ComposerBanner.Content>
-          <ComposerBanner.Actions>
-            <ComposerBanner.Count>{items.length}</ComposerBanner.Count>
-            <ComposerBanner.ToggleIcon expanded={expanded} />
-          </ComposerBanner.Actions>
-        </ComposerBanner.Row>
-        {workflow?.isHeld && (
-          <ComposerBanner.Row layout="wrap-actions">
-            <ComposerBanner.Icon>
-              <PauseIcon />
-            </ComposerBanner.Icon>
-            <ComposerBanner.Content>Messages stay saved until you resume.</ComposerBanner.Content>
-            <ComposerBanner.Actions>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={resuming || busyRunId !== null}
-                onClick={() => {
-                  setResuming(true);
-                  void resume({
-                    environmentId: props.environmentId,
-                    input: { threadId: props.threadId },
-                  }).finally(() => setResuming(false));
-                }}
-              >
-                Resume queue
-              </Button>
-            </ComposerBanner.Actions>
-          </ComposerBanner.Row>
-        )}
-        <ComposerBanner.Scroll className={cn("max-h-32", !expanded && "hidden")}>
-          <ComposerBanner.Children render={<ol />} id={queueListId}>
-            {items.map((item) => {
-              const previewText = replaceComposerContextReferences(item.text, (reference) =>
-                reference.kind === "image" && item.thumbnails.length > 0 ? "" : reference.label,
-              ).trim();
-              const rowRunId = item.runId;
-              const rowServerIndex = item.serverIndex;
-              const isEditing = rowRunId !== null && rowRunId === props.editingRunId;
-              const rowDraggable =
-                rowRunId !== null && rowServerIndex !== null && canReorder && busyRunId === null;
-              return (
-                <ComposerBanner.Row
-                  render={<li />}
-                  key={item.key}
-                  aria-current={isEditing ? "true" : undefined}
-                  className={cn(
-                    "relative rounded-sm",
-                    isEditing && "bg-accent text-accent-foreground",
-                    dragState !== null && dragState.runId === item.runId && "opacity-50",
-                  )}
-                  draggable={rowDraggable}
-                  onDragStart={(event) => {
-                    if (item.runId === null || dragArmedRunIdRef.current !== item.runId) {
+        <MonocodeQueueHeaderToggle
+          expanded={expanded}
+          count={items.length}
+          controlsId={queueListId}
+          onToggle={() => setExpanded((value) => !value)}
+        />
+        {expanded ? (
+          // Bounded queue scrolling, as before: long queues scroll instead of
+          // pushing the composer off screen.
+          <ScrollArea scrollFade className="max-h-32">
+            <ol id={queueListId}>
+              {items.map((item, index) => {
+                const previewText = replaceComposerContextReferences(item.text, (reference) =>
+                  reference.kind === "image" && item.thumbnails.length > 0 ? "" : reference.label,
+                ).trim();
+                // Donor label fallback for attachment-only rows.
+                const label =
+                  previewText ||
+                  (item.attachments.length > 0
+                    ? `${item.attachments.length} attachment${item.attachments.length === 1 ? "" : "s"}`
+                    : "");
+                const rowRunId = item.runId;
+                const rowServerIndex = item.serverIndex;
+                const isEditing = rowRunId !== null && rowRunId === props.editingRunId;
+                const rowDraggable =
+                  rowRunId !== null && rowServerIndex !== null && canReorder && busyRunId === null;
+                const insertIndicator =
+                  item.serverIndex !== null && dragState?.insertIndex === item.serverIndex
+                    ? ("top" as const)
+                    : item.serverIndex === queued.length - 1 &&
+                        dragState?.insertIndex === queued.length
+                      ? ("bottom" as const)
+                      : null;
+                return (
+                  <MonocodeQueueRow
+                    key={item.key}
+                    divider={index > 0}
+                    dimmed={dragState !== null && dragState.runId === item.runId}
+                    editing={isEditing}
+                    indicator={insertIndicator}
+                    aria-current={isEditing ? "true" : undefined}
+                    draggable={rowDraggable}
+                    onDragStart={(event) => {
+                      if (item.runId === null || dragArmedRunIdRef.current !== item.runId) {
+                        event.preventDefault();
+                        return;
+                      }
+                      event.dataTransfer.setData(QUEUED_RUN_DRAG_TYPE, item.runId);
+                      event.dataTransfer.effectAllowed = "move";
+                      setDragState({ runId: item.runId, insertIndex: null });
+                    }}
+                    onDragEnd={() => {
+                      dragArmedRunIdRef.current = null;
+                      setDragState(null);
+                    }}
+                    onDragOver={(event) => {
+                      if (dragState === null || item.serverIndex === null) return;
                       event.preventDefault();
-                      return;
-                    }
-                    event.dataTransfer.setData(QUEUED_RUN_DRAG_TYPE, item.runId);
-                    event.dataTransfer.effectAllowed = "move";
-                    setDragState({ runId: item.runId, insertIndex: null });
-                  }}
-                  onDragEnd={() => {
-                    dragArmedRunIdRef.current = null;
-                    setDragState(null);
-                  }}
-                  onDragOver={(event) => {
-                    if (dragState === null || item.serverIndex === null) return;
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    const insertIndex =
-                      event.clientY < rect.top + rect.height / 2
-                        ? item.serverIndex
-                        : item.serverIndex + 1;
-                    if (dragState.insertIndex !== insertIndex) {
-                      setDragState({ runId: dragState.runId, insertIndex });
-                    }
-                  }}
-                  onDrop={(event) => {
-                    if (dragState === null) return;
-                    event.preventDefault();
-                    completeDrag(dragState.runId, dragState.insertIndex);
-                  }}
-                >
-                  {item.serverIndex !== null && dragState?.insertIndex === item.serverIndex ? (
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 rounded bg-primary/70"
-                    />
-                  ) : null}
-                  {item.serverIndex === queued.length - 1 &&
-                  dragState?.insertIndex === queued.length ? (
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 rounded bg-primary/70"
-                    />
-                  ) : null}
-                  <ComposerBanner.Icon aria-hidden={false}>
+                      event.dataTransfer.dropEffect = "move";
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      const insertIndex =
+                        event.clientY < rect.top + rect.height / 2
+                          ? item.serverIndex
+                          : item.serverIndex + 1;
+                      if (dragState.insertIndex !== insertIndex) {
+                        setDragState({ runId: dragState.runId, insertIndex });
+                      }
+                    }}
+                    onDrop={(event) => {
+                      if (dragState === null) return;
+                      event.preventDefault();
+                      completeDrag(dragState.runId, dragState.insertIndex);
+                    }}
+                  >
                     {canReorder && rowRunId !== null && rowServerIndex !== null ? (
-                      <Button
-                        size="icon-xs"
-                        variant="ghost-muted"
-                        aria-label="Reorder queued message (drag, or press the arrow keys)"
-                        className="cursor-grab active:cursor-grabbing disabled:cursor-default"
+                      <MonocodeQueueGripButton
                         disabled={busyRunId !== null}
-                        onPointerDown={() => {
+                        onArm={() => {
                           dragArmedRunIdRef.current = rowRunId;
                         }}
-                        onKeyDown={(event) => {
-                          if (busyRunId !== null) return;
-                          if (event.key === "ArrowUp" && rowServerIndex > 0) {
-                            event.preventDefault();
-                            void move(rowRunId, queued[rowServerIndex - 1]?.run.id ?? null);
-                          }
-                          if (event.key === "ArrowDown" && rowServerIndex < queued.length - 1) {
-                            event.preventDefault();
-                            void move(rowRunId, queued[rowServerIndex + 2]?.run.id ?? null);
-                          }
+                        onMoveUp={() => {
+                          if (busyRunId !== null || rowServerIndex <= 0) return;
+                          void move(rowRunId, queued[rowServerIndex - 1]?.run.id ?? null);
                         }}
-                      >
-                        <GripVerticalIcon />
-                      </Button>
-                    ) : null}
-                  </ComposerBanner.Icon>
-                  <ComposerBanner.Content className="text-foreground/80">
-                    {isEditing ? <span className="sr-only">Editing queued message: </span> : null}
-                    {item.pending ? (
-                      <Clock3Icon
-                        aria-label="Saving queued message"
-                        className="size-3 shrink-0 text-muted-foreground/60"
+                        onMoveDown={() => {
+                          if (busyRunId !== null || rowServerIndex >= queued.length - 1) return;
+                          void move(rowRunId, queued[rowServerIndex + 2]?.run.id ?? null);
+                        }}
                       />
                     ) : null}
+                    <MonocodeQueueRowIcon />
+                    {item.pending ? <MonocodeQueuePendingMark /> : null}
                     {item.thumbnails.length > 0 ? (
                       <span className="flex shrink-0 items-center gap-0.5">
                         {item.thumbnails.map((thumbnail) => (
@@ -423,103 +386,57 @@ export function QueuedRunsControl({
                         ))}
                       </span>
                     ) : null}
-                    <Tooltip>
-                      <TooltipTrigger render={<span className="min-w-0 flex-1 truncate" />}>
-                        {previewText}
-                      </TooltipTrigger>
-                      <TooltipPopup side="top" className="max-w-96 break-words">
-                        {previewText}
-                      </TooltipPopup>
-                    </Tooltip>
-                  </ComposerBanner.Content>
-                  <ComposerBanner.Actions>
+                    <MonocodeQueueLabel title={previewText}>{label}</MonocodeQueueLabel>
                     {isEditing ? (
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        aria-label="Cancel editing queued message"
-                        onClick={props.onCancelEdit}
-                      >
-                        Cancel
-                      </Button>
+                      <MonocodeQueueCancelEditButton onCancel={props.onCancelEdit} />
                     ) : (
                       <>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                size="icon-xs"
-                                variant="ghost-muted"
-                                aria-label="Edit queued message"
-                                disabled={item.runId === null || busyRunId !== null}
-                                onClick={() => {
-                                  if (item.runId !== null && item.messageId !== null) {
-                                    props.onEditQueuedRun({
-                                      runId: item.runId,
-                                      messageId: item.messageId,
-                                      text: item.text,
-                                      attachments: item.attachments,
-                                    });
-                                  }
-                                }}
-                              />
-                            }
-                          >
-                            <PencilIcon />
-                          </TooltipTrigger>
-                          <TooltipPopup>
-                            {`Edit in the composer${item.serverIndex === queued.length - 1 && props.editShortcutLabel ? ` (${props.editShortcutLabel})` : ""}`}
-                          </TooltipPopup>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger render={<span className="flex shrink-0" />}>
-                            <Button
-                              size="xs"
-                              variant="ghost-muted"
-                              disabled={
-                                item.runId === null ||
-                                busyRunId !== null ||
-                                !workflow?.canPromoteToSteer
-                              }
-                              onClick={() => {
-                                if (item.runId !== null) {
-                                  void steer(item.runId);
-                                }
-                              }}
-                            >
-                              <CornerUpRightIcon />
-                              Steer
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipPopup>
-                            {activeRun === null
+                        <MonocodeQueueSteerButton
+                          disabled={
+                            item.runId === null ||
+                            busyRunId !== null ||
+                            !workflow?.canPromoteToSteer
+                          }
+                          title={
+                            activeRun === null
                               ? "There is no active run to steer"
-                              : `Send as a steer instead${item.serverIndex === 0 && props.steerShortcutLabel ? ` (${props.steerShortcutLabel})` : ""}`}
-                          </TooltipPopup>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <ComposerBanner.Dismiss
-                                aria-label="Remove queued message"
-                                disabled={item.runId === null || busyRunId !== null}
-                                onClick={() => {
-                                  if (item.runId !== null) void remove(item.runId);
-                                }}
-                              />
+                              : `Send as a steer instead${item.serverIndex === 0 && props.steerShortcutLabel ? ` (${props.steerShortcutLabel})` : ""}`
+                          }
+                          onPress={() => {
+                            if (item.runId !== null) {
+                              void steer(item.runId);
                             }
-                          />
-                          <TooltipPopup>Remove from queue</TooltipPopup>
-                        </Tooltip>
+                          }}
+                        />
+                        <MonocodeQueueEditButton
+                          disabled={item.runId === null || busyRunId !== null}
+                          title={`Edit in the composer${item.serverIndex === queued.length - 1 && props.editShortcutLabel ? ` (${props.editShortcutLabel})` : ""}`}
+                          onPress={() => {
+                            if (item.runId !== null && item.messageId !== null) {
+                              props.onEditQueuedRun({
+                                runId: item.runId,
+                                messageId: item.messageId,
+                                text: item.text,
+                                attachments: item.attachments,
+                              });
+                            }
+                          }}
+                        />
+                        <MonocodeQueueRemoveButton
+                          disabled={item.runId === null || busyRunId !== null}
+                          onPress={() => {
+                            if (item.runId !== null) void remove(item.runId);
+                          }}
+                        />
                       </>
                     )}
-                  </ComposerBanner.Actions>
-                </ComposerBanner.Row>
-              );
-            })}
-          </ComposerBanner.Children>
-        </ComposerBanner.Scroll>
-      </ComposerBanner.Root>
-    </ComposerBanner.Attachment>
+                  </MonocodeQueueRow>
+                );
+              })}
+            </ol>
+          </ScrollArea>
+        ) : null}
+      </MonocodeQueueCard>
+    </MonocodeQueueShell>
   );
 }

@@ -159,6 +159,17 @@ describe("uiStateStore pure functions", () => {
 });
 
 describe("parsePersistedState", () => {
+  it("discards invalid group expansion entries while retaining explicit collapse", () => {
+    expect(
+      parsePersistedState({
+        projectGroupExpandedByName: {
+          Clients: false,
+          Personal: true,
+          invalid: "false" as unknown as boolean,
+        },
+      }).projectGroupExpandedByName,
+    ).toEqual({ Clients: false, Personal: true });
+  });
   it("hydrates the last selected pull request merge method", () => {
     const parsed = parsePersistedState({
       pullRequestMergeMethod: "squash",
@@ -289,6 +300,28 @@ describe("uiStateStore persistence", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("restores independent project identities and collapsed groups after reload", () => {
+    const state = makeUiState({
+      sessionSidebarFilters: {
+        hiddenProviders: ["remote:codex"],
+        time: "7d",
+        status: { working: true, needsApproval: false, done: false },
+      },
+      projectGroupExpandedByName: { Clients: false, Personal: true },
+      projectAppearanceByKey: {
+        "local:/one": { mascot: "mushroom", color: "#22c55e", group: "Clients" },
+        "remote:/two": { color: "#3b82f6", pinned: true, group: "Personal" },
+      },
+    });
+    persistState(state);
+    const restored = parsePersistedState(
+      JSON.parse(localStorageStub.getItem(PERSISTED_STATE_KEY) ?? "{}"),
+    );
+    expect(restored.sessionSidebarFilters).toEqual(state.sessionSidebarFilters);
+    expect(restored.projectGroupExpandedByName).toEqual(state.projectGroupExpandedByName);
+    expect(restored.projectAppearanceByKey).toEqual(state.projectAppearanceByKey);
   });
 
   it("persists raw UI preferences including thread visit markers", () => {

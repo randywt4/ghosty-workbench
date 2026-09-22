@@ -1,0 +1,69 @@
+/* MonoCode donor picker surfaces for the composer workspace controls.
+   Pinned donor: bb3924b `src/features/source-control/ui/BranchPicker.tsx`
+   (MENU_WIDTH 280, h-8 rows, 13px labels, Check/GitBranch 3.5, remote badge,
+   search header, create footer) and
+   `src/features/workspace/ui/WorkspacePicker.tsx` (width 240, h-9 rows,
+   4px icons, header + selected Check).
+   Scoped to `.monocode-surface.monocode-composer-picker` (applied on the
+   popup itself, since Base UI portals render outside any surface). T3 owns
+   virtualization, pagination, keyboard, PR/create/origin mechanics; this
+   only paints rows, search, and status like the donor. */
+
+/* Select list padding matches the donor popover inner padding. */
+.monocode-surface.monocode-composer-picker [data-slot="select-list"] {
+  padding: 6px;
+}
+
+/* Donor rows: h-8, rounded-lg, 13px, content/80 resting. */
+.monocode-surface.monocode-composer-picker [data-slot="combobox-item"],
+.monocode-surface.monocode-composer-picker [data-slot="select-item"] {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--color-content) 80%, transparent);
+}
+
+.monocode-surface.monocode-composer-picker [data-slot="combobox-item"]:hover,
+.monocode-surface.monocode-composer-picker [data-slot="select-item"]:hover {
+  background: color-mix(in srgb, var(--color-content) 5%, transparent);
+}
+
+/* Donor highlighted/selected row: selection fill + full-contrast label. */
+.monocode-surface.monocode-composer-picker [data-slot="combobox-item"][data-highlighted],
+.monocode-surface.monocode-composer-picker [data-slot="combobox-item"][data-selected],
+.monocode-surface.monocode-composer-picker [data-slot="select-item"][data-highlighted],
+.monocode-surface.monocode-composer-picker [data-slot="select-item"][data-selected] {
+  background: var(--color-selection);
+  color: var(--color-content);
+}
+
+/* Donor group header: 11px medium content/45. */
+.monocode-surface.monocode-composer-picker [data-slot="select-group-label"] {
+  padding: 4px 8px 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-content) 45%, transparent);
+}
+
+/* Donor search header: bordered 13px input row. */
+.monocode-surface.monocode-composer-picker [data-slot="combobox-input"] input,
+.monocode-surface.monocode-composer-picker input[aria-label="Search base branches"] {
+  font-size: 13px;
+}
+
+.monocode-surface.monocode-composer-picker [data-slot="combobox-status"],
+.monocode-surface.monocode-composer-picker [data-slot="combobox-empty"] {
+  font-size: 12px;
+}
+
+/* Donor remote badge on branch rows. */
+.monocode-composer-branch-remote {
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-content) 6%, transparent);
+  padding: 2px 6px;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--color-content) 40%, transparent);
+}

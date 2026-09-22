@@ -10564,7 +10564,7 @@ export default function ChatView(props: ChatViewProps) {
                   {isDraftHeroState ? (
                     <div className="absolute inset-x-0 bottom-full">
                       <div
-                        className="pb-8 group-has-data-[composer-shoulder-tab]/composer-stack:pb-4"
+                        className="pb-5 group-has-data-[composer-shoulder-tab]/composer-stack:pb-4"
                         style={
                           forceExpandedMobileComposer
                             ? { viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME }
@@ -10597,6 +10597,79 @@ export default function ChatView(props: ChatViewProps) {
                       >
                         <div className="relative z-10">
                           <ChatComposer
+                            contextHeader={
+                              <div className="min-h-0">
+                                <div
+                                  data-terminal-open={
+                                    terminalUiState.terminalOpen ? "true" : undefined
+                                  }
+                                  className="relative z-0"
+                                >
+                                  {mountComposerModelStrip ? (
+                                    <ComposerSurface.ContextStrip
+                                      data-composer-model-strip="true"
+                                      aria-hidden={showComposerModelStrip ? undefined : true}
+                                      inert={showComposerModelStrip ? undefined : true}
+                                      className={cn(
+                                        "ps-2 group-data-model-strip-transition/composer-surface:before:backdrop-blur-(--glass-blur) group-data-model-strip-transition/composer-surface:before:bg-[color-mix(in_srgb,var(--chat-composer-glass-surface)_var(--glass-opacity),transparent)]",
+                                        !showComposerModelStrip &&
+                                          "pointer-events-none invisible absolute inset-x-0 top-full",
+                                      )}
+                                    >
+                                      <div
+                                        ref={setRestingComposerControlsHost}
+                                        className="min-w-0 flex-1"
+                                      />
+                                    </ComposerSurface.ContextStrip>
+                                  ) : null}
+                                  {mountComposerContextStrip && (
+                                    <div className="pointer-events-auto">
+                                      <BranchToolbar
+                                        forceNewWorktree={multipleModelSelections !== null}
+                                        ref={branchToolbarRef}
+                                        environmentId={activeThread.environmentId}
+                                        threadId={activeThread.id}
+                                        showGitControls={isGitRepo}
+                                        {...(routeKind === "draft" && draftId ? { draftId } : {})}
+                                        onEnvModeChange={onEnvModeChange}
+                                        startFromOrigin={startFromOrigin}
+                                        onStartFromOriginChange={onStartFromOriginChange}
+                                        {...(canOverrideServerThreadEnvMode
+                                          ? { effectiveEnvModeOverride: envMode }
+                                          : {})}
+                                        {...(canOverrideServerThreadEnvMode
+                                          ? {
+                                              activeThreadBranchOverride: activeThreadBranch,
+                                              onActiveThreadBranchOverrideChange:
+                                                setPendingServerThreadBranch,
+                                            }
+                                          : {})}
+                                        envLocked={envLocked}
+                                        onComposerFocusRequest={scheduleComposerFocus}
+                                        {...(canCheckoutPullRequestIntoThread
+                                          ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+                                          : {})}
+                                        {...(hasMultipleEnvironments
+                                          ? { onEnvironmentChange }
+                                          : {})}
+                                        autoEnvironmentLabel={autoEnvironmentLabel}
+                                        onAutoEnvironment={
+                                          draftId &&
+                                          !envLocked &&
+                                          hasMultipleEnvironments &&
+                                          loadBalancingSettings.loadBalancingEnabled
+                                            ? onAutoEnvironment
+                                            : undefined
+                                        }
+                                        availableEnvironments={logicalProjectEnvironments}
+                                        composerControlsHostRef={setRestingComposerControlsHost}
+                                        contextStripVisible={showComposerContextStrip}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            }
                             multipleModelSelections={multipleModelSelections}
                             supportsMultipleModels={
                               serverConfig?.environment.capabilities.requiredWorktreeBootstrap ===
@@ -10758,73 +10831,6 @@ export default function ChatView(props: ChatViewProps) {
                           />
                         </div>
                       </ComposerSurface.Host>
-                      <div className="min-h-0">
-                        <div
-                          data-terminal-open={terminalUiState.terminalOpen ? "true" : undefined}
-                          className="relative z-0"
-                        >
-                          {mountComposerModelStrip ? (
-                            <ComposerSurface.ContextStrip
-                              data-composer-model-strip="true"
-                              aria-hidden={showComposerModelStrip ? undefined : true}
-                              inert={showComposerModelStrip ? undefined : true}
-                              className={cn(
-                                "ps-2 group-data-model-strip-transition/composer-surface:before:backdrop-blur-(--glass-blur) group-data-model-strip-transition/composer-surface:before:bg-[color-mix(in_srgb,var(--chat-composer-glass-surface)_var(--glass-opacity),transparent)]",
-                                !showComposerModelStrip &&
-                                  "pointer-events-none invisible absolute inset-x-0 top-full",
-                              )}
-                            >
-                              <div
-                                ref={setRestingComposerControlsHost}
-                                className="min-w-0 flex-1"
-                              />
-                            </ComposerSurface.ContextStrip>
-                          ) : null}
-                          {mountComposerContextStrip && (
-                            <div className="pointer-events-auto">
-                              <BranchToolbar
-                                forceNewWorktree={multipleModelSelections !== null}
-                                ref={branchToolbarRef}
-                                environmentId={activeThread.environmentId}
-                                threadId={activeThread.id}
-                                showGitControls={isGitRepo}
-                                {...(routeKind === "draft" && draftId ? { draftId } : {})}
-                                onEnvModeChange={onEnvModeChange}
-                                startFromOrigin={startFromOrigin}
-                                onStartFromOriginChange={onStartFromOriginChange}
-                                {...(canOverrideServerThreadEnvMode
-                                  ? { effectiveEnvModeOverride: envMode }
-                                  : {})}
-                                {...(canOverrideServerThreadEnvMode
-                                  ? {
-                                      activeThreadBranchOverride: activeThreadBranch,
-                                      onActiveThreadBranchOverrideChange:
-                                        setPendingServerThreadBranch,
-                                    }
-                                  : {})}
-                                envLocked={envLocked}
-                                onComposerFocusRequest={scheduleComposerFocus}
-                                {...(canCheckoutPullRequestIntoThread
-                                  ? { onCheckoutPullRequestRequest: openPullRequestDialog }
-                                  : {})}
-                                {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
-                                autoEnvironmentLabel={autoEnvironmentLabel}
-                                onAutoEnvironment={
-                                  draftId &&
-                                  !envLocked &&
-                                  hasMultipleEnvironments &&
-                                  loadBalancingSettings.loadBalancingEnabled
-                                    ? onAutoEnvironment
-                                    : undefined
-                                }
-                                availableEnvironments={logicalProjectEnvironments}
-                                composerControlsHostRef={setRestingComposerControlsHost}
-                                contextStripVisible={showComposerContextStrip}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
                     </ComposerSurface.Shell>
                     <div
                       aria-hidden

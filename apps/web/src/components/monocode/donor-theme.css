@@ -1,0 +1,114 @@
+/* MonoCode bb3924b: shared donor tokens and popover motion. */
+@theme inline {
+  /* Preserve descenders in compact labels, including two 10px lines in a 30px tab. */
+  --leading-label: 1.4;
+  --color-background-base: hsl(
+    var(--theme-hue) var(--theme-saturation) var(--background-lightness)
+  );
+  --color-content: hsl(var(--theme-hue) var(--theme-saturation) var(--content-lightness));
+  /* Structural separators: use border-stroke, divide-stroke, or bg-stroke. */
+  --color-stroke: color-mix(in srgb, var(--color-content) 7%, transparent);
+  /* Interactive fills keep their dark-theme contrast but use gentler ink in
+     light mode. Prefer these over content opacity for selected/raised UI. */
+  --color-selection-subtle: color-mix(
+    in srgb,
+    var(--color-content) var(--selection-subtle-strength),
+    transparent
+  );
+  --color-selection: color-mix(
+    in srgb,
+    var(--color-content) var(--selection-strength),
+    transparent
+  );
+  --color-selection-strong: color-mix(
+    in srgb,
+    var(--color-content) var(--selection-strong-strength),
+    transparent
+  );
+  --color-selection-hover: color-mix(
+    in srgb,
+    var(--color-content) var(--selection-hover-strength),
+    transparent
+  );
+  --color-selection-emphasis: color-mix(
+    in srgb,
+    var(--color-content) var(--selection-emphasis-strength),
+    transparent
+  );
+  --color-monocode-accent: hsl(211 92% 62%);
+}
+.monocode-surface,
+.monocode-sidebar {
+  --theme-hue: 240;
+  --theme-saturation: 0%;
+  --background-lightness: 97%;
+  --content-lightness: 18%;
+  --selection-subtle-strength: 5%;
+  --selection-strength: 6%;
+  --selection-strong-strength: 7%;
+  --selection-hover-strength: 10%;
+  --selection-emphasis-strength: 14%;
+  --color-content: hsl(var(--theme-hue) var(--theme-saturation) var(--content-lightness));
+  --color-background-base: hsl(
+    var(--theme-hue) var(--theme-saturation) var(--background-lightness)
+  );
+  color: var(--color-content);
+}
+.dark .monocode-surface,
+.dark .monocode-sidebar {
+  --background-lightness: 9%;
+  --content-lightness: 92%;
+  --selection-subtle-strength: 8%;
+  --selection-strength: 10%;
+  --selection-strong-strength: 12%;
+  --selection-hover-strength: 15%;
+  --selection-emphasis-strength: 20%;
+}
+.popover-backdrop {
+  background: color-mix(in srgb, var(--color-content) 2%, transparent);
+}
+
+.light .monocode-surface .popover-backdrop,
+html:not(.dark) .monocode-surface .popover-backdrop {
+  background: var(--color-background-base);
+}
+
+/* Animate content only; its sibling glass stays still. Finish at `none` and
+   do not retain the animation's transform/opacity compositing state with a
+   forwards fill. Hover repaints should happen in the ordinary resting state. */
+@keyframes popover-open {
+  from {
+    opacity: 0;
+    transform: translate(var(--popover-shift, 0), var(--popover-lift, 0)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.popover-open {
+  animation: popover-open 170ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.popover-open[data-popover-side="bottom"] {
+  --popover-lift: -8px;
+}
+
+.popover-open[data-popover-side="top"] {
+  --popover-lift: 8px;
+}
+
+.popover-open[data-popover-side="right"] {
+  --popover-shift: -8px;
+}
+
+.popover-open[data-popover-side="left"] {
+  --popover-shift: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover-open {
+    animation: none;
+  }
+}

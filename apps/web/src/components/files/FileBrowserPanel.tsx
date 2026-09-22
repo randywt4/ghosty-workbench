@@ -6,8 +6,8 @@ import type {
 import type { EnvironmentId, ProjectEntry } from "@t3tools/contracts";
 import { FileTree, useFileTree, useFileTreeSearch, useFileTreeSelector } from "@pierre/trees/react";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
-import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupInput } from "~/components/ui/input-group";
@@ -19,14 +19,23 @@ import { useTheme } from "~/hooks/useTheme";
 import { useWorkspaceMutationRefresh } from "~/hooks/useWorkspaceMutationRefresh";
 import { useFileContextMenu, type FileContextMenuAction } from "~/fileContextMenu";
 import { readLocalApi } from "~/localApi";
-import { T3_PIERRE_ICONS } from "~/pierre-icons";
 import { PIERRE_TREE_UNSAFE_CSS, pierreTreeStyle } from "~/pierre-tree-theme";
+import { useEnvironmentQuery } from "~/state/query";
+import { vcsEnvironment } from "~/state/vcs";
 
 import { createFileTreeDragMentionController } from "./fileTreeDragMention";
 import { areAllDirectoriesExpanded, setAllDirectoriesExpanded } from "./fileTreeExpansion";
 import { buildFileTreePathUpdates } from "./fileTreePathReconciliation";
+import {
+  buildMonocodeFileTreeIcons,
+  MONOCODE_FILE_ROW_HEIGHT,
+  MONOCODE_FILE_TREE_UNSAFE_CSS,
+  renderMonocodeRowDecoration,
+} from "./monocodeFileTreeDonor";
+import { getMaterialPackSnapshot, subscribeMaterialPack } from "./monocodeMaterialIconPack";
 import { useDirectoryEntries } from "./useDirectoryEntries";
 import { useProjectPathSearch } from "~/state/queries";
+import "./monocode-file-tree.css";
 
 interface FileBrowserPanelProps {
   environmentId: EnvironmentId;
@@ -117,7 +126,16 @@ export default function FileBrowserPanel({
   } = useDirectoryEntries(environmentId, cwd);
   const [query, setQuery] = useState("");
   const [expandAll, setExpandAll] = useState(false);
+  // Donor root row (project name, uppercase) toggles tree visibility without
+  // touching model expansion; remounts per cwd via parent key, preserving
+  // multi-environment isolation.
+  const [rootOpen, setRootOpen] = useState(true);
   const pathSearch = useProjectPathSearch({ environmentId, cwd, query: query.slice(0, 256) }, 200);
+  // Working-tree changed paths for generic "changed" (modified) badges.
+  // The status contract carries only path + line totals, no added/untracked/
+  // deleted enum, so all working-tree files map to modified without inferring
+  // specific types from totals. See report for missing distinctions.
+  const vcsStatus = useEnvironmentQuery(vcsEnvironment.status({ environmentId, input: { cwd } }));
   const entries = useMemo(() => {
     const result = new Map(directoryEntries.map((entry) => [entry.path, entry]));
     if (query.trim() && !pathSearch.isPending) {
@@ -246,6 +264,20 @@ export default function FileBrowserPanel({
       }),
     [],
   );
+  // MonoCode donor visuals: material glyphs via decoration + spriteSheet,
+  // donor row metrics via itemHeight/density + unsafeCSS. The Tauri
+  // filesystem/git runtime is not imported; T3 owns lazy dirs, search,
+  // selection, drag-to-chat, and context-menu actions.
+  const materialPack = useSyncExternalStore(
+    subscribeMaterialPack,
+    getMaterialPackSnapshot,
+    getMaterialPackSnapshot,
+  );
+  const monocodeIcons = useMemo(() => buildMonocodeFileTreeIcons(), []);
+  const monocodeUnsafeCSS = useMemo(
+    () => `${PIERRE_TREE_UNSAFE_CSS}\n${MONOCODE_FILE_TREE_UNSAFE_CSS}`,
+    [],
+  );
   const { model } = useFileTree({
     composition: {
       contextMenu: {
@@ -258,11 +290,13 @@ export default function FileBrowserPanel({
     // Rows only need to be draggable so entries can be dropped into the chat
     // composer; rearranging files inside the tree stays off.
     dragAndDrop: { canDrop: () => false },
-    density: "compact",
+    density: 1,
+    itemHeight: MONOCODE_FILE_ROW_HEIGHT,
     fileTreeSearchMode: "hide-non-matches",
     flattenEmptyDirectories: true,
     initialExpansion: "closed",
-    icons: T3_PIERRE_ICONS,
+    icons: monocodeIcons,
+    renderRowDecoration: renderMonocodeRowDecoration,
     onSelectionChange: (selectedPaths) => {
       // The drag controller's selection cache must track every change,
       // including reveal-driven ones, or drags act on a stale selection.
@@ -284,8 +318,17 @@ export default function FileBrowserPanel({
     paths: [],
     search: false,
     onSearchChange: (value) => setQuery(value ?? ""),
-    unsafeCSS: PIERRE_TREE_UNSAFE_CSS,
+    unsafeCSS: monocodeUnsafeCSS,
   });
+  // Swap in the full material spriteSheet once the lazy pack lands. This
+  // re-renders rows so folder/file decorations resolve to material glyphs;
+  // selection, expansion, search, and drag state are preserved by the model.
+  const materialIconsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!materialPack || materialIconsAppliedRef.current) return;
+    materialIconsAppliedRef.current = true;
+    model.setIcons(buildMonocodeFileTreeIcons());
+  }, [materialPack, model]);
   const search = useFileTreeSearch(model);
   const allDirectoriesExpanded = useFileTreeSelector(model, (currentModel) =>
     areAllDirectoriesExpanded(currentModel, directoryPaths),
@@ -324,15 +367,29 @@ export default function FileBrowserPanel({
     return model.subscribe(loadExpanded);
   }, [directoryPaths, load, model]);
   useEffect(() => {
-    model.setGitStatus(
-      entries
-        .filter((entry) => entry.ignored)
-        .map((entry) => ({
-          path: treePath(entry),
-          status: "ignored",
-        })),
+    const ignoredPaths = new Set(
+      entries.filter((entry) => entry.ignored).map((entry) => treePath(entry)),
     );
-  }, [entries, model]);
+    const ignoredStatus = [...ignoredPaths].map((path) => ({
+      path,
+      status: "ignored" as const,
+    }));
+    // Generic changed state only: working-tree files are known-changed, but
+    // the contract has no status enum, so do not infer added/deleted from
+    // insertion/deletion totals. Deleted paths have no tree row and are
+    // naturally absent; added vs untracked cannot be distinguished here.
+    const changedPaths = new Set<string>();
+    for (const file of vcsStatus.data?.workingTree.files ?? []) {
+      const path = file.path.replace(/^\.\//, "");
+      if (!path || ignoredPaths.has(path) || ignoredPaths.has(`${path}/`)) continue;
+      changedPaths.add(path);
+    }
+    const changedStatus = [...changedPaths].map((path) => ({
+      path,
+      status: "modified" as const,
+    }));
+    model.setGitStatus([...ignoredStatus, ...changedStatus]);
+  }, [entries, model, vcsStatus.data]);
   useEffect(() => {
     if (!selectedPath) return;
     const controller = new AbortController();
@@ -425,11 +482,20 @@ export default function FileBrowserPanel({
       handledRevealRef.current = revealRequest;
       return;
     }
+    // Commit the visible host before measuring/scrolling it. Stamping this
+    // reveal while the host is hidden would prevent the next effect retry.
+    if (!rootOpen) {
+      setRootOpen(true);
+      return;
+    }
     treeSelectionPathRef.current = null;
     handledRevealRef.current = revealRequest;
 
     syncingSelectionRef.current = true;
     setQuery("");
+    // Reveals must be visible: reopen a collapsed donor root without
+    // clobbering an active search (search already cleared above).
+    setRootOpen(true);
     model.closeSearch();
     for (const path of model.getSelectedPaths()) {
       model.getItem(path)?.deselect();
@@ -454,7 +520,7 @@ export default function FileBrowserPanel({
     queueMicrotask(() => {
       syncingSelectionRef.current = false;
     });
-  }, [entryKinds, model, selectedPath, selectedPathRevealId]);
+  }, [entryKinds, model, rootOpen, selectedPath, selectedPathRevealId]);
 
   // Tag tree drags with the composer mention payload. The row is read from
   // the composed event path (the tree's shadow root is open), so this does
@@ -481,10 +547,11 @@ export default function FileBrowserPanel({
     };
   }, [dragMention]);
 
+  const treeVisible = rootOpen || query.trim().length > 0;
   return (
     <div
       ref={panelRef}
-      className="flex min-h-0 flex-1 flex-col bg-background"
+      className="monocode-surface monocode-file-browser flex min-h-0 flex-1 flex-col bg-background"
       data-file-browser-panel={`${environmentId}:${cwd}`}
     >
       <div
@@ -528,6 +595,22 @@ export default function FileBrowserPanel({
           </Tooltip>
         ) : null}
       </div>
+      <div className="flex h-8 min-h-8 shrink-0 items-center">
+        <button
+          type="button"
+          aria-expanded={treeVisible}
+          aria-label={`${projectName} project files`}
+          onClick={() => {
+            setRootOpen((open) => !open);
+          }}
+          className="monocode-file-root"
+        >
+          <span className="monocode-file-root-chevron" aria-hidden="true">
+            {treeVisible ? <ChevronDown /> : <ChevronRight />}
+          </span>
+          <span className="monocode-file-root-label">{projectName}</span>
+        </button>
+      </div>
       {error || pathSearch.error ? (
         <button
           type="button"
@@ -547,12 +630,14 @@ export default function FileBrowserPanel({
           Loading files…
         </div>
       )}
-      <FileTree
-        model={model}
-        aria-label={`${projectName} files`}
-        className="min-h-0 flex-1 overflow-hidden"
-        style={pierreTreeStyle(resolvedTheme)}
-      />
+      <div className="monocode-file-tree-host" hidden={!treeVisible}>
+        <FileTree
+          model={model}
+          aria-label={`${projectName} files`}
+          className="min-h-0 flex-1 overflow-hidden"
+          style={pierreTreeStyle(resolvedTheme)}
+        />
+      </div>
     </div>
   );
 }

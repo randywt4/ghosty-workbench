@@ -6,21 +6,22 @@ import {
 } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const showContextMenuFallbackMock =
+const showMonocodeContextMenuMock =
   vi.fn<
     <T extends string>(
       items: readonly ContextMenuItem<T>[],
       position?: { x: number; y: number },
     ) => Promise<T | null>
   >();
-const dismissContextMenuMock = vi.fn<() => void>();
+const dismissMonocodeContextMenuMock = vi.fn<() => void>();
 
 const requestConfirmDialogMock =
   vi.fn<(message: string, options?: ConfirmDialogOptions) => Promise<boolean> | undefined>();
 
-vi.mock("./contextMenuFallback", () => ({
-  showContextMenuFallback: showContextMenuFallbackMock,
-  dismissContextMenu: dismissContextMenuMock,
+vi.mock("./components/monocode/MonocodeContextMenu", () => ({
+  showMonocodeContextMenu: showMonocodeContextMenuMock,
+  dismissMonocodeContextMenu: dismissMonocodeContextMenuMock,
+  isMonocodeContextMenuOpen: vi.fn(() => false),
 }));
 
 vi.mock("./confirmDialog", () => ({
@@ -78,21 +79,21 @@ describe("LocalApi", () => {
     expect(api.shell).not.toHaveProperty("openInEditor");
   });
 
-  it("uses the browser context-menu fallback without a desktop bridge", async () => {
-    showContextMenuFallbackMock.mockResolvedValue("rename");
+  it("uses the shared MonoCode menu without a desktop bridge", async () => {
+    showMonocodeContextMenuMock.mockResolvedValue("rename");
     const { createLocalApi } = await import("./localApi");
     const items = [{ id: "rename", label: "Rename" }] as const;
 
     await expect(createLocalApi().contextMenu.show(items, { x: 4, y: 5 })).resolves.toBe("rename");
-    expect(showContextMenuFallbackMock).toHaveBeenCalledWith(items, { x: 4, y: 5 });
+    expect(showMonocodeContextMenuMock).toHaveBeenCalledWith(items, { x: 4, y: 5 });
   });
 
-  it("dismisses an open browser context menu without a desktop bridge", async () => {
+  it("dismisses the shared menu without a desktop bridge", async () => {
     const { createLocalApi } = await import("./localApi");
 
     await createLocalApi().contextMenu.close();
 
-    expect(dismissContextMenuMock).toHaveBeenCalledOnce();
+    expect(dismissMonocodeContextMenuMock).toHaveBeenCalledOnce();
   });
 
   it("uses the themed confirmation host when it is available", async () => {
@@ -121,7 +122,7 @@ describe("LocalApi", () => {
     );
   });
 
-  it("delegates host capabilities and persistence to the desktop bridge", async () => {
+  it("routes app menus to the shared renderer even with a desktop bridge", async () => {
     const showContextMenu = vi.fn().mockResolvedValue("delete");
     const pickFolder = vi.fn().mockResolvedValue("/tmp/project");
     const getClientSettings = vi.fn().mockResolvedValue(DEFAULT_CLIENT_SETTINGS);
@@ -132,19 +133,25 @@ describe("LocalApi", () => {
       getClientSettings,
       setClientSettings,
     } as unknown as DesktopBridge;
+    showMonocodeContextMenuMock.mockResolvedValue("delete");
 
     const { createLocalApi } = await import("./localApi");
     const api = createLocalApi();
     const items = [{ id: "delete", label: "Delete" }] as const;
 
     await expect(api.contextMenu.show(items)).resolves.toBe("delete");
+    await api.contextMenu.close();
     requestConfirmDialogMock.mockReturnValue(undefined);
     await expect(api.dialogs.confirm("Install update?")).resolves.toBe(false);
     await expect(api.dialogs.pickFolder({ initialPath: "/tmp" })).resolves.toBe("/tmp/project");
     await expect(api.persistence.getClientSettings()).resolves.toEqual(DEFAULT_CLIENT_SETTINGS);
     await api.persistence.setClientSettings(DEFAULT_CLIENT_SETTINGS);
 
-    expect(showContextMenu).toHaveBeenCalledWith(items, undefined);
+    // Native OS menus must no longer catch app context menus; Electron stays
+    // untouched for live processes, the bridge simply bypasses it.
+    expect(showMonocodeContextMenuMock).toHaveBeenCalledWith(items, undefined);
+    expect(showContextMenu).not.toHaveBeenCalled();
+    expect(dismissMonocodeContextMenuMock).toHaveBeenCalledOnce();
     expect(pickFolder).toHaveBeenCalledWith({ initialPath: "/tmp" });
     expect(getClientSettings).toHaveBeenCalledTimes(1);
     expect(setClientSettings).toHaveBeenCalledWith(DEFAULT_CLIENT_SETTINGS);

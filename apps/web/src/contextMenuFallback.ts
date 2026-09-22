@@ -1,4 +1,5 @@
 import type { ContextMenuItem } from "@t3tools/contracts";
+import { isMonocodeContextMenuOpen } from "./components/monocode/MonocodeContextMenu";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -197,7 +198,17 @@ function isNodeWithinMenuStack(target: EventTarget | null, menuStack: readonly H
 let activeContextMenuDismiss: (() => void) | null = null;
 
 export function isContextMenuOpen(): boolean {
-  return activeContextMenuDismiss !== null;
+  if (activeContextMenuDismiss !== null) {
+    return true;
+  }
+  // The shared MonoCode bridge now owns app menus; keep this guard true while
+  // it is open so existing callers (media preview) still defer to the menu
+  // without editing their feature files.
+  try {
+    return isMonocodeContextMenuOpen();
+  } catch {
+    return false;
+  }
 }
 
 /**

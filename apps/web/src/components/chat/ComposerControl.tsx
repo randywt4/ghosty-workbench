@@ -17,10 +17,12 @@ type ComposerSelectControlProps = Omit<ComponentProps<typeof SelectTrigger>, "si
 };
 
 const composerControlClassName =
-  "monocode-control rounded-md text-secondary-label transition-none hover:text-foreground [&_svg[data-composer-control-chevron]]:-mx-0.5 [&_svg[data-composer-control-icon]]:mx-0";
-// MonoCode ModelPicker / AccessPicker trigger at bb3924b; menus remain T3-owned.
+  "monocode-control rounded-md transition-none [&_svg[data-composer-control-chevron]]:-mx-0.5 [&_svg[data-composer-control-icon]]:mx-0";
+// MonoCode ModelPicker / AccessPicker / pill triggers at bb3924b: one gray
+// surface per picker (bg-selection), 11px label, chevron included. Resting
+// (xs) keeps the T3 collapsed-strip treatment; it has no donor equivalent.
 const expandedComposerControlClassName =
-  "h-6.5 min-h-6.5 gap-1 bg-foreground/10 px-1.5 text-[11px] font-normal text-foreground hover:bg-foreground/15";
+  "monocode-surface h-6.5 min-h-6.5 gap-1 bg-selection px-1.5 text-[11px] font-normal text-content hover:bg-selection-hover";
 const restingComposerControlClassName =
   "[--control-icon-color:currentColor] font-normal text-muted-foreground/70 hover:text-foreground/80 [&_svg[data-composer-control-chevron]]:-me-1 [&_svg[data-composer-control-chevron]]:ms-0";
 
@@ -47,22 +49,16 @@ export function ComposerControl({
 export function ComposerControlIcon({
   icon: Icon,
   className,
-  opticalSize = "default",
   size = "sm",
 }: {
   icon: LucideIcon;
   className?: string | undefined;
-  opticalSize?: "default" | "large";
   size?: ComposerControlSize;
 }) {
   return (
     <Icon
       aria-hidden="true"
-      className={cn(
-        "shrink-0",
-        size === "xs" ? "size-3" : opticalSize === "large" ? "size-4.5" : "size-4",
-        className,
-      )}
+      className={cn("shrink-0", size === "xs" ? "size-3" : "size-3.5", className)}
       data-composer-control-icon
     />
   );
@@ -80,7 +76,7 @@ export function ComposerControlChevron({
       aria-hidden="true"
       className={cn(
         "shrink-0",
-        size === "xs" ? "size-3 text-current opacity-50" : "size-3.5 text-icon-muted",
+        size === "xs" ? "size-3 text-current opacity-50" : "size-3 text-content/50",
         className,
       )}
       data-composer-control-chevron

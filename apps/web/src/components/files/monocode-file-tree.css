@@ -1,0 +1,75 @@
+/* MonoCode donor file-tree chrome for the right Files panel.
+   Pinned donor: bb3924b `src/features/files/ui/FileTree.tsx`.
+   Scoped to `.monocode-surface.monocode-file-browser` so unrelated T3
+   surfaces keep their styling. Uses the shared donor accent token
+   `--color-monocode-accent` for focus only; selection/hover stay
+   content-mixed per the donor Explorer (10%/5%). */
+
+.monocode-surface.monocode-file-browser {
+  --monocode-file-root-height: 32px;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-root {
+  display: flex;
+  height: var(--monocode-file-root-height);
+  min-height: var(--monocode-file-root-height);
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+  width: 100%;
+  text-align: left;
+  cursor: default;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-root:hover {
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-root:focus-visible {
+  outline: 1px solid var(--color-monocode-accent);
+  outline-offset: -1px;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-root-chevron {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-root-chevron > svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-root-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-tree-host {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.monocode-surface.monocode-file-browser .monocode-file-tree-host[hidden] {
+  display: none;
+}

@@ -60,11 +60,13 @@ import {
   resolveThreadPullRequestBadge,
   useLinkedThreadPullRequest,
 } from "./ThreadStatusIndicators";
-import { Button } from "./ui/button";
 import { ComboboxItem, ComboboxTrigger } from "./ui/combobox";
 import { MiddleTruncate } from "./ui/middle-truncate";
-import { BranchPicker, BranchPickerRefItem } from "./BranchPicker";
+import { BranchPicker } from "./BranchPicker";
 import { stackedThreadToast, toastManager } from "./ui/toast";
+import { Check, GitBranch, Plus } from "./monocode/icons";
+import { composerPickerTriggerClassName } from "./monocode/ComposerPickerTrigger";
+import "./monocode/composer-picker.css";
 
 export interface BranchToolbarBranchSelectorHandle {
   open: () => void;
@@ -610,16 +612,16 @@ export function BranchToolbarBranchSelector({
           key={itemValue}
           index={index}
           value={itemValue}
-          className="pe-2"
+          className="h-9 gap-2 px-2 text-[13px] pe-2"
           onClick={() => selectPickerItem(itemValue)}
         >
-          <div className="flex min-w-0 items-center gap-2 py-1">
-            <SourceControlIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex min-w-0 items-center gap-2">
+            <SourceControlIcon className="size-3.5 shrink-0 text-content/50" />
             <span className="flex min-w-0 flex-col items-start">
-              <span className="truncate font-medium">
+              <span className="truncate font-medium text-[13px]">
                 Checkout {sourceControlPresentation.terminology.singular}
               </span>
-              <span className="truncate text-muted-foreground text-xs">{prReference}</span>
+              <span className="truncate text-[11px] text-content/45">{prReference}</span>
             </span>
           </div>
         </ComboboxItem>
@@ -632,25 +634,56 @@ export function BranchToolbarBranchSelector({
           key={itemValue}
           index={index}
           value={itemValue}
-          className="pe-1.5"
+          className="h-8 gap-2 px-2 text-[13px] pe-1.5"
           onClick={() => selectPickerItem(itemValue)}
         >
-          <span className="truncate">Create new ref &quot;{newRefName}&quot;</span>
+          <Plus className="size-4 shrink-0" strokeWidth={1.75} />
+          <span className="min-w-0 truncate">Create new ref &quot;{newRefName}&quot;</span>
         </ComboboxItem>
       );
     }
 
     const refName = branchByName.get(itemValue);
     if (!refName) return null;
+    const isSelected = refName.name === resolvedActiveBranch && !refName.isRemote;
+    const hasSecondaryWorktree =
+      refName.worktreePath && activeProjectCwd && refName.worktreePath !== activeProjectCwd;
+    const badge = refName.current
+      ? null
+      : hasSecondaryWorktree
+        ? "worktree"
+        : refName.isRemote
+          ? refName.name
+          : refName.isDefault
+            ? "default"
+            : null;
 
     return (
-      <BranchPickerRefItem
-        branch={refName}
-        projectCwd={activeProjectCwd}
+      <ComboboxItem
+        hideIndicator
+        key={itemValue}
         index={index}
+        value={itemValue}
+        className="h-8 gap-2 px-2 text-[13px] pe-1.5"
         onClick={() => selectBranch(refName)}
         onContextMenu={(event) => handleBranchContextMenu(event, itemValue)}
-      />
+      >
+        {isSelected || refName.current ? (
+          <Check className="size-3.5 shrink-0" strokeWidth={1.75} />
+        ) : (
+          <GitBranch className="size-3.5 shrink-0 text-content/50" strokeWidth={1.75} />
+        )}
+        <span
+          className={`min-w-0 flex-1 truncate ${isSelected || refName.current ? "font-medium" : ""}`}
+        >
+          {itemValue}
+        </span>
+        {refName.isRemote ? (
+          <span className="monocode-composer-branch-remote">{refName.remoteName ?? "remote"}</span>
+        ) : badge ? (
+          <span className="shrink-0 text-[10px] text-content/40">{badge}</span>
+        ) : null}
+      </ComboboxItem>
     );
   }
 
@@ -687,7 +720,9 @@ export function BranchToolbarBranchSelector({
         side: displayMode === "panel" ? "bottom" : "top",
         className: cn(
           "flex flex-col",
-          displayMode === "panel" ? THREAD_DETAILS_PANEL_ROW_POPUP_CLASS : "w-80",
+          displayMode === "panel"
+            ? THREAD_DETAILS_PANEL_ROW_POPUP_CLASS
+            : "monocode-surface monocode-composer-picker w-70",
         ),
         ...(displayMode === "toolbar" ? composerFloatingLayerProps : {}),
       }}
@@ -718,28 +753,43 @@ export function BranchToolbarBranchSelector({
           onContextMenu={(event) => handleBranchContextMenu(event, resolvedActiveBranch)}
         >
           <ComboboxTrigger
-            render={<Button variant="ghost" size={displayMode === "panel" ? "sm" : "xs"} />}
             className={cn(
-              "min-w-0 max-w-full font-normal text-muted-foreground/70 text-xs! hover:text-foreground/80 active:scale-100",
-              displayMode === "panel" && THREAD_DETAILS_PANEL_SELECT_ROW_CLASS,
+              displayMode === "panel"
+                ? cn(
+                    "min-w-0 max-w-full font-normal text-muted-foreground/70 text-xs! hover:text-foreground/80 active:scale-100",
+                    THREAD_DETAILS_PANEL_SELECT_ROW_CLASS,
+                  )
+                : composerPickerTriggerClassName("max-w-full"),
             )}
             disabled={isInitialBranchesLoadPending || isBranchActionPending}
+            aria-label={`Branch ${triggerLabel}`}
           >
-            <GitBranchIcon
-              className={cn(
-                "size-3 shrink-0 opacity-70",
-                displayMode === "panel" && THREAD_DETAILS_PANEL_ICON_CLASS,
-              )}
-            />
-            <ComposerContextLabel displayMode={displayMode}>
-              <MiddleTruncate value={triggerLabel} className="w-full" />
-            </ComposerContextLabel>
             {displayMode === "panel" ? (
-              <span data-slot="select-icon">
-                <ChevronDownIcon className={THREAD_DETAILS_PANEL_CHEVRON_CLASS} />
-              </span>
+              <>
+                <GitBranchIcon
+                  className={cn("size-3 shrink-0 opacity-70", THREAD_DETAILS_PANEL_ICON_CLASS)}
+                />
+                <ComposerContextLabel displayMode={displayMode}>
+                  <MiddleTruncate value={triggerLabel} className="w-full" />
+                </ComposerContextLabel>
+                <span data-slot="select-icon">
+                  <ChevronDownIcon className={THREAD_DETAILS_PANEL_CHEVRON_CLASS} />
+                </span>
+              </>
             ) : (
-              <ChevronDownIcon className="size-3 shrink-0 opacity-50" />
+              <>
+                <GitBranch className="size-3.5 shrink-0" aria-hidden="true" />
+                <ComposerContextLabel displayMode={displayMode}>
+                  {isInitialBranchesLoadPending ? (
+                    <span className="relative block w-full min-w-0 truncate">
+                      <span className="invisible">main</span>
+                      <span className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-current opacity-50" />
+                    </span>
+                  ) : (
+                    <span className="block w-full min-w-0 truncate">{triggerLabel}</span>
+                  )}
+                </ComposerContextLabel>
+              </>
             )}
           </ComboboxTrigger>
         </span>

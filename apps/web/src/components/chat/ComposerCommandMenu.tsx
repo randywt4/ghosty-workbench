@@ -11,20 +11,11 @@ import {
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
 } from "@t3tools/contracts";
-import {
-  BlocksIcon,
-  FolderIcon,
-  MessagesSquareIcon,
-  PackageIcon,
-  SettingsIcon,
-  UserRoundIcon,
-  type LucideIcon,
-} from "lucide-react";
+import { MessagesSquareIcon } from "lucide-react";
 import { memo, useLayoutEffect, useRef } from "react";
 
 import { type ComposerSlashCommand, type ComposerTriggerKind } from "../../composer-logic";
 import { cn } from "~/lib/utils";
-import { Badge } from "../ui/badge";
 import { Command, CommandGroup, CommandItem, CommandList } from "../ui/command";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { ComposerBanner } from "./ComposerBanner";
@@ -130,7 +121,7 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
           </CommandList>
         ) : (
           <div className="px-5 pt-3.5 pb-7">
-            <p className="text-secondary-label text-xs">
+            <p className="text-[12px] text-content/50">
               {props.isLoading
                 ? props.triggerKind === "skill"
                   ? "Searching workspace skills..."
@@ -165,14 +156,28 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
     props.triggerKind === "slash-command" && props.item.type === "skill" ? props.item.skill : null;
   const pullRequestPresentation =
     props.item.type === "pull-request" ? resolvePullRequestState(props.item.pullRequest) : null;
+  // Skill/slash rows follow donor SkillPicker; path/thread/PR rows follow
+  // donor FileMentionPicker. T3 keeps its item kinds, icons and Command
+  // keyboard behavior behind the donor row chrome.
+  const isSkillRow =
+    props.item.type === "slash-command" ||
+    props.item.type === "provider-slash-command" ||
+    props.item.type === "skill";
 
   return (
     <CommandItem
       value={props.item.id}
       data-composer-item-id={props.item.id}
       className={cn(
-        "cursor-pointer select-none gap-3 rounded-lg px-3 py-2! hover:bg-transparent hover:text-inherit data-highlighted:bg-transparent data-highlighted:text-inherit",
-        props.isActive && "bg-accent! text-accent-foreground!",
+        "cursor-pointer select-none text-content",
+        isSkillRow
+          ? "flex-col gap-0.5 rounded-md px-2 py-1.5"
+          : "h-8 gap-2 rounded-md px-2 text-[13px] leading-none",
+        props.isActive
+          ? isSkillRow
+            ? "bg-content/10 data-highlighted:bg-content/10"
+            : "bg-selection data-highlighted:bg-selection"
+          : "data-highlighted:bg-content/5 hover:bg-content/5",
       )}
       onMouseMove={() => {
         if (!props.isActive) props.onHighlight(props.item.id);
@@ -192,48 +197,51 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
         />
       ) : null}
       {props.item.type === "thread" ? (
-        <MessagesSquareIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
+        <MessagesSquareIcon aria-hidden="true" className="size-3.5 shrink-0" />
       ) : null}
       {pullRequestPresentation ? (
         <pullRequestPresentation.Icon
           role="img"
           aria-label={pullRequestPresentation.label}
-          className={cn("size-4 shrink-0", pullRequestPresentation.toneClassName)}
+          className={cn("size-3.5 shrink-0", pullRequestPresentation.toneClassName)}
         />
       ) : null}
-      <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="min-w-0 max-w-[45%] shrink-0 truncate font-sans text-xs font-medium">
-          {isSlashSkill ? (
-            <>
-              <span className="text-secondary-label">/skill:</span>
-              {formatProviderSkillDisplayName(isSlashSkill)}
-            </>
-          ) : (
-            props.item.label
-          )}
+      {isSkillRow ? (
+        <span className="flex min-w-0 w-full items-baseline gap-2">
+          <span className="truncate text-[13px]">
+            {isSlashSkill ? (
+              <>
+                <span className="text-content/50">/skill:</span>
+                {formatProviderSkillDisplayName(isSlashSkill)}
+              </>
+            ) : (
+              props.item.label
+            )}
+          </span>
+          {skillSourceKind ? (
+            <span className="shrink-0 text-[10px] tracking-wide text-content/40 uppercase">
+              {SKILL_SOURCE_LABEL_BY_KIND[skillSourceKind]}
+              {props.triggerKind === "skill" ? " Skill" : null}
+            </span>
+          ) : null}
         </span>
-        <span className="min-w-0 max-w-[48ch] flex-1 truncate text-left text-secondary-label text-xs">
+      ) : (
+        <span className="min-w-0 flex-1 truncate">{props.item.label}</span>
+      )}
+      {isSkillRow ? (
+        props.item.description ? (
+          <span className="line-clamp-2 text-[11px] leading-4 text-content/50">
+            {props.item.description}
+          </span>
+        ) : null
+      ) : (
+        <span className="min-w-0 max-w-[45%] shrink-0 truncate text-right font-mono text-[11px] text-content/40">
           {props.item.description}
         </span>
-        {skillSourceKind ? (
-          <SkillSourceBadge
-            kind={skillSourceKind}
-            showSkillSuffix={props.triggerKind === "skill"}
-          />
-        ) : null}
-      </span>
+      )}
     </CommandItem>
   );
 });
-
-const SKILL_SOURCE_ICON_BY_KIND: Record<ProviderSkillSourceKind, LucideIcon> = {
-  app: BlocksIcon,
-  repo: FolderIcon,
-  project: FolderIcon,
-  personal: UserRoundIcon,
-  system: SettingsIcon,
-  other: PackageIcon,
-};
 
 const SKILL_SOURCE_LABEL_BY_KIND: Record<ProviderSkillSourceKind, string> = {
   app: "App",
@@ -243,14 +251,3 @@ const SKILL_SOURCE_LABEL_BY_KIND: Record<ProviderSkillSourceKind, string> = {
   system: "System",
   other: "Provider",
 };
-
-function SkillSourceBadge(props: { kind: ProviderSkillSourceKind; showSkillSuffix: boolean }) {
-  const Icon = SKILL_SOURCE_ICON_BY_KIND[props.kind];
-  return (
-    <Badge className="ms-auto" variant="secondary">
-      <Icon aria-hidden="true" className="text-current" />
-      {SKILL_SOURCE_LABEL_BY_KIND[props.kind]}
-      {props.showSkillSuffix ? " Skill" : null}
-    </Badge>
-  );
-}

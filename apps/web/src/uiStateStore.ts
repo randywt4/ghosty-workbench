@@ -1,7 +1,9 @@
+import { sanitizeSessionSidebarFilters, type SessionSidebarFilters } from "./sessionSidebarFilters";
 import { Debouncer } from "@tanstack/react-pacer";
 import type { PullRequestMergeMethod } from "@t3tools/contracts";
 import { create } from "zustand";
 import { normalizeProjectPathForComparison } from "./lib/projectPaths";
+import { sanitizeProjectAppearance, type ProjectAppearance } from "./projectAppearance";
 
 export const PERSISTED_STATE_KEY = "t3code:ui-state:v1";
 // Version 1 stored card visibility, not folder expansion.
@@ -20,6 +22,9 @@ const LEGACY_PERSISTED_STATE_KEYS = [
 ] as const;
 
 export interface PersistedUiState {
+  sessionSidebarFilters?: SessionSidebarFilters;
+  projectAppearanceByKey?: Record<string, ProjectAppearance>;
+  projectGroupExpandedByName?: Record<string, boolean>;
   projectExpandedById?: Record<string, boolean>;
   projectOrder?: string[];
   threadLastVisitedAtById?: Record<string, string>;
@@ -34,6 +39,9 @@ export interface PersistedUiState {
 }
 
 export interface UiProjectState {
+  sessionSidebarFilters?: SessionSidebarFilters;
+  projectAppearanceByKey?: Record<string, ProjectAppearance>;
+  projectGroupExpandedByName?: Record<string, boolean>;
   projectExpandedById: Record<string, boolean>;
   projectOrder: string[];
   // Logical project key the sidebar list is scoped to, or null for "all
@@ -147,6 +155,15 @@ export function parsePersistedState(parsed: PersistedUiState): UiState {
 
   return {
     projectExpandedById,
+    ...(parsed.sessionSidebarFilters
+      ? { sessionSidebarFilters: sanitizeSessionSidebarFilters(parsed.sessionSidebarFilters) }
+      : {}),
+    ...(parsed.projectGroupExpandedByName
+      ? { projectGroupExpandedByName: sanitizeBooleanRecord(parsed.projectGroupExpandedByName) }
+      : {}),
+    ...(parsed.projectAppearanceByKey
+      ? { projectAppearanceByKey: sanitizeProjectAppearance(parsed.projectAppearanceByKey) }
+      : {}),
     projectOrder,
     threadLastVisitedAtById: sanitizeTimestampRecord(parsed.threadLastVisitedAtById),
     threadChangedFilesExpandedById:
@@ -225,6 +242,15 @@ export function persistState(state: UiState): void {
       PERSISTED_STATE_KEY,
       JSON.stringify({
         projectExpandedById,
+        ...(state.sessionSidebarFilters
+          ? { sessionSidebarFilters: state.sessionSidebarFilters }
+          : {}),
+        ...(state.projectAppearanceByKey
+          ? { projectAppearanceByKey: state.projectAppearanceByKey }
+          : {}),
+        ...(state.projectGroupExpandedByName
+          ? { projectGroupExpandedByName: state.projectGroupExpandedByName }
+          : {}),
         projectOrder: state.projectOrder,
         threadLastVisitedAtById: state.threadLastVisitedAtById,
         defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
@@ -424,6 +450,9 @@ export function reorderProjects(
 }
 
 interface UiStateStore extends UiState {
+  setSessionSidebarFilters: (filters: SessionSidebarFilters) => void;
+  setProjectGroupExpanded: (name: string, expanded: boolean) => void;
+  setProjectAppearance: (key: string, patch: Partial<ProjectAppearance>) => void;
   markThreadVisited: (threadId: string, visitedAt: string) => void;
   markThreadUnread: (threadId: string, latestTurnCompletedAt: string | null | undefined) => void;
   setThreadChangedFilesExpanded: (threadId: string, turnId: string, expanded: boolean) => void;
@@ -440,6 +469,21 @@ interface UiStateStore extends UiState {
 
 export const useUiStateStore = create<UiStateStore>((set) => ({
   ...readPersistedState(),
+  setSessionSidebarFilters: (filters) =>
+    set({ sessionSidebarFilters: sanitizeSessionSidebarFilters(filters) }),
+  setProjectGroupExpanded: (name, expanded) =>
+    set((state) => ({
+      projectGroupExpandedByName: { ...state.projectGroupExpandedByName, [name]: expanded },
+    })),
+  setProjectAppearance: (key, patch) =>
+    set((state) => ({
+      projectAppearanceByKey: {
+        ...state.projectAppearanceByKey,
+        ...sanitizeProjectAppearance({
+          [key]: { ...state.projectAppearanceByKey?.[key], ...patch },
+        }),
+      },
+    })),
   markThreadVisited: (threadId, visitedAt) =>
     set((state) => markThreadVisited(state, threadId, visitedAt)),
   markThreadUnread: (threadId, latestTurnCompletedAt) =>

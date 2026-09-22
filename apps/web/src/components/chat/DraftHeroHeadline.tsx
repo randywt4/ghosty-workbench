@@ -140,7 +140,7 @@ export function DraftHeroHeadline({
             // project title) so the hero sentence reads naturally: an
             // aria-label here would replace the title with an action phrase
             // mid-sentence and baffle screen-reader users.
-            <MenuTrigger className="pointer-events-auto inline-block max-w-64 truncate border-foreground/60 border-b border-dotted align-baseline text-foreground transition-colors hover:border-foreground/80 focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" />
+            <MenuTrigger className="pointer-events-auto inline-block max-w-64 truncate align-baseline text-foreground transition-colors hover:underline focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" />
           }
         >
           {activeProjectDisplayName ?? "Choose a project"}
@@ -239,7 +239,7 @@ export function DraftHeroHeadline({
   // in the h1; without an explicit label its widget state bleeds into the
   // announced phrase.
   const headingLabel = hasResolvedProject
-    ? `What should we build in ${activeProjectDisplayName}?`
+    ? `What should we work on in ${activeProjectDisplayName}?`
     : canChooseProject
       ? `${activeProjectDisplayName ?? "Choose a project"} to start`
       : "Add a project to start";
@@ -247,10 +247,10 @@ export function DraftHeroHeadline({
   return (
     <h1
       aria-label={headingLabel}
-      className="mx-auto w-full max-w-5xl text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl"
+      className="mx-auto w-full px-2.5 text-left text-lg font-normal text-foreground tracking-tight"
     >
       {hasResolvedProject ? (
-        <>What should we build in {projectSelector}?</>
+        <>What should we work on in {projectSelector}?</>
       ) : canChooseProject ? (
         <>{projectSelector} to start</>
       ) : (

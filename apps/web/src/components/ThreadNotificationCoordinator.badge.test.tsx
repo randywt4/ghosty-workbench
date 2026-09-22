@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   badge: vi.fn(),
   environmentIds: ["one", "two"],
 }));
+vi.mock("../state/entities", () => ({ readProject: () => null }));
 vi.mock("@effect/atom-react", () => ({ useAtomValue: (id: string) => state.shells.get(id) }));
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => state.navigate,

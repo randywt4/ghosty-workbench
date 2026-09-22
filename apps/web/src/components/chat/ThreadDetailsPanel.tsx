@@ -19,6 +19,11 @@ import ProjectScriptsControl, {
 } from "../ProjectScriptsControl";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
+import {
+  GLASS_POPOVER_CONTENT_CLASS_NAME,
+  GLASS_POPOVER_FRAME_CLASS_NAME,
+  GlassBackdrop,
+} from "../monocode/glassPopoverFrame";
 import { cn } from "../../lib/utils";
 import { OpenInPicker } from "./OpenInPicker";
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
@@ -101,128 +106,159 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
       : {}),
   };
 
-  const card = (
-    <div
-      className={cn(
-        // A single-track grid, because a grid area is a definite containing block: the card's own
-        // height is "content, clamped by max-height", which percentages treat as indefinite — as
-        // a plain block (or even a flex column) every `h-full`/`max-h-full` down the chain
-        // resolved to nothing, the scroll area's viewport stayed at its content height, and the
-        // card's overflow-hidden clipped the content instead of scrolling it. `minmax(0,1fr)`
-        // still shrink-wraps short content while letting the clamp bite on tall content.
-        "dropdown-glass isolate contain-paint grid max-h-full grid-rows-[minmax(0,1fr)] overflow-hidden rounded-[20px]",
-        // The popup's real ceiling is what base-ui measured for it — the anchor's clipping
-        // ancestors, which is how an open terminal drawer shrinks it — less the popover
-        // viewport's own p-2. The dvh term is the fallback's fallback, from before.
-        props.mode === "popover" &&
-          "max-h-[min(calc(100dvh-6.5rem),calc(var(--available-height,100dvh)-1rem))]",
-      )}
-      data-thread-details-card
-    >
-      <ScrollArea scrollFade className="min-h-0">
-        <ThreadDetailsSection
-          headingId="thread-details-workspace-heading"
-          title="Workspace"
-          separated={false}
-        >
-          {props.versionMismatch ? (
-            <div className="mx-1 mb-2 flex gap-2 rounded-xl border border-warning/30 bg-warning/6 p-3">
-              <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-warning" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium">Client and server versions differ</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                  Client {props.versionMismatch.clientVersion} · {props.versionMismatch.serverLabel}{" "}
-                  {props.versionMismatch.serverVersion}
-                </p>
-              </div>
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label="Dismiss version mismatch warning"
-                onClick={props.onDismissVersionMismatch}
-              >
-                <XIcon className="size-3.5" />
-              </Button>
+  const cardBody = (
+    <ScrollArea scrollFade className="min-h-0">
+      <ThreadDetailsSection
+        headingId="thread-details-workspace-heading"
+        title="Workspace"
+        separated={false}
+      >
+        {props.versionMismatch ? (
+          <div className="mx-1 mb-2 flex gap-2 rounded-xl border border-warning/30 bg-warning/6 p-3">
+            <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-warning" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium">Client and server versions differ</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Client {props.versionMismatch.clientVersion} · {props.versionMismatch.serverLabel}{" "}
+                {props.versionMismatch.serverVersion}
+              </p>
             </div>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Dismiss version mismatch warning"
+              onClick={props.onDismissVersionMismatch}
+            >
+              <XIcon className="size-3.5" />
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col">
+          {props.availableEnvironments.length > 1 ? (
+            <BranchToolbarEnvironmentSelector
+              displayMode="panel"
+              autoEnvironmentLabel={props.autoEnvironmentLabel}
+              onAutoEnvironment={props.onAutoEnvironment}
+              envLocked={props.envLocked}
+              environmentId={props.environmentId}
+              availableEnvironments={props.availableEnvironments}
+              onEnvironmentChange={props.onEnvironmentChange}
+            />
           ) : null}
 
+          <BranchToolbar layout="panel" panelSection="workspace" {...branchToolbarProps} />
+
+          {props.showOpenInPicker ? (
+            <OpenInPicker
+              environmentId={props.environmentId}
+              keybindings={props.keybindings}
+              availableEditors={props.availableEditors}
+              openInCwd={props.gitCwd}
+              displayMode="panel"
+            />
+          ) : null}
+
+          {props.activeProjectScripts ? (
+            <ProjectScriptsControl
+              displayMode="panel"
+              scripts={props.activeProjectScripts}
+              fileScripts={fileScripts}
+              keybindings={props.keybindings}
+              preferredScriptId={props.preferredScriptId}
+              onRunScript={props.onRunProjectScript}
+              onAddScript={props.onAddProjectScript}
+              onUpdateScript={props.onUpdateProjectScript}
+              onDeleteScript={props.onDeleteProjectScript}
+            />
+          ) : null}
+        </div>
+      </ThreadDetailsSection>
+
+      {props.gitCwd ? (
+        <ThreadDetailsSection
+          headingId="thread-details-version-control-heading"
+          title="Version Control"
+        >
           <div className="flex flex-col">
-            {props.availableEnvironments.length > 1 ? (
-              <BranchToolbarEnvironmentSelector
-                displayMode="panel"
-                autoEnvironmentLabel={props.autoEnvironmentLabel}
-                onAutoEnvironment={props.onAutoEnvironment}
-                envLocked={props.envLocked}
-                environmentId={props.environmentId}
-                availableEnvironments={props.availableEnvironments}
-                onEnvironmentChange={props.onEnvironmentChange}
-              />
+            {props.isGitRepo ? (
+              <BranchToolbar layout="panel" panelSection="branch" {...branchToolbarProps} />
             ) : null}
-
-            <BranchToolbar layout="panel" panelSection="workspace" {...branchToolbarProps} />
-
-            {props.showOpenInPicker ? (
-              <OpenInPicker
-                environmentId={props.environmentId}
-                keybindings={props.keybindings}
-                availableEditors={props.availableEditors}
-                openInCwd={props.gitCwd}
+            {props.activeProjectName ? (
+              <GitActionsControl
                 displayMode="panel"
-              />
-            ) : null}
-
-            {props.activeProjectScripts ? (
-              <ProjectScriptsControl
-                displayMode="panel"
-                scripts={props.activeProjectScripts}
-                fileScripts={fileScripts}
-                keybindings={props.keybindings}
-                preferredScriptId={props.preferredScriptId}
-                onRunScript={props.onRunProjectScript}
-                onAddScript={props.onAddProjectScript}
-                onUpdateScript={props.onUpdateProjectScript}
-                onDeleteScript={props.onDeleteProjectScript}
+                gitCwd={props.gitCwd}
+                activeThreadRef={{ environmentId: props.environmentId, threadId: props.threadId }}
+                {...(props.draftId ? { draftId: props.draftId } : {})}
+                {...(props.onOpenChanges ? { onOpenChanges: props.onOpenChanges } : {})}
               />
             ) : null}
           </div>
         </ThreadDetailsSection>
+      ) : null}
 
-        {props.gitCwd ? (
-          <ThreadDetailsSection
-            headingId="thread-details-version-control-heading"
-            title="Version Control"
-          >
-            <div className="flex flex-col">
-              {props.isGitRepo ? (
-                <BranchToolbar layout="panel" panelSection="branch" {...branchToolbarProps} />
-              ) : null}
-              {props.activeProjectName ? (
-                <GitActionsControl
-                  displayMode="panel"
-                  gitCwd={props.gitCwd}
-                  activeThreadRef={{ environmentId: props.environmentId, threadId: props.threadId }}
-                  {...(props.draftId ? { draftId: props.draftId } : {})}
-                  {...(props.onOpenChanges ? { onOpenChanges: props.onOpenChanges } : {})}
-                />
-              ) : null}
-            </div>
-          </ThreadDetailsSection>
-        ) : null}
+      {!props.draftId ? (
+        <ThreadAutomationsPanel environmentId={props.environmentId} threadId={props.threadId} />
+      ) : null}
 
-        {!props.draftId ? (
-          <ThreadAutomationsPanel environmentId={props.environmentId} threadId={props.threadId} />
-        ) : null}
-
-        {!props.draftId ? (
-          <ThreadRelationshipsPanel environmentId={props.environmentId} threadId={props.threadId} />
-        ) : null}
-      </ScrollArea>
-    </div>
+      {!props.draftId ? (
+        <ThreadRelationshipsPanel environmentId={props.environmentId} threadId={props.threadId} />
+      ) : null}
+    </ScrollArea>
   );
 
   if (props.mode === "popover") {
-    return <div data-thread-details-panel="popover">{card}</div>;
+    // Nested inside the ui PopoverPopup, which supplies the shared donor
+    // frame (no own frame/backdrop here, so glass never doubles). Content
+    // keeps the single-track grid scroll contract and the measured ceiling.
+    return (
+      <div
+        className={cn(
+          GLASS_POPOVER_CONTENT_CLASS_NAME,
+          // A single-track grid, because a grid area is a definite containing block: the card's own
+          // height is "content, clamped by max-height", which percentages treat as indefinite — as
+          // a plain block (or even a flex column) every `h-full`/`max-h-full` down the chain
+          // resolved to nothing, the scroll area's viewport stayed at its content height, and the
+          // card's overflow-hidden clipped the content instead of scrolling it. `minmax(0,1fr)`
+          // still shrink-wraps short content while letting the clamp bite on tall content.
+          "grid max-h-full grid-rows-[minmax(0,1fr)] overflow-hidden",
+          // The popup's real ceiling is what base-ui measured for it — the anchor's clipping
+          // ancestors, which is how an open terminal drawer shrinks it — less the popover
+          // viewport's own p-2. The dvh term is the fallback's fallback, from before.
+          "max-h-[min(calc(100dvh-6.5rem),calc(var(--available-height,100dvh)-1rem))]",
+        )}
+        data-thread-details-panel="popover"
+        data-thread-details-card
+      >
+        {cardBody}
+      </div>
+    );
   }
+
+  const card = (
+    <div
+      className={cn(
+        GLASS_POPOVER_FRAME_CLASS_NAME,
+        // Inline mode is standalone (no outer popup frame), so it owns the
+        // full donor frame here. `relative` gives the absolute GlassBackdrop
+        // its containing block; the donor Popover frame is fixed-positioned
+        // and never needs this. Single grid like the original card, so short
+        // content shrink-wraps instead of stretching the aside height.
+        "relative grid max-h-full grid-rows-[minmax(0,1fr)]",
+      )}
+      data-thread-details-card
+    >
+      <GlassBackdrop />
+      <div
+        className={cn(
+          GLASS_POPOVER_CONTENT_CLASS_NAME,
+          "grid max-h-full grid-rows-[minmax(0,1fr)] overflow-hidden rounded-[inherit]",
+        )}
+      >
+        {cardBody}
+      </div>
+    </div>
+  );
 
   return (
     <aside

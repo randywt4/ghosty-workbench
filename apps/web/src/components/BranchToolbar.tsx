@@ -639,7 +639,7 @@ export const BranchToolbar = memo(function BranchToolbar({
       ref={setStripElement}
       data-compact={labelsOverflow ? "" : undefined}
       className={cn(
-        "gap-1 text-xs font-normal text-muted-foreground/70",
+        "text-xs font-normal text-content/50",
         // A non-Git strip with no visible composer controls should occupy no
         // space, but its host must retain a prospective width so controls can
         // become visible again when the chat view grows.
@@ -716,7 +716,7 @@ export const BranchToolbar = memo(function BranchToolbar({
           ref={composerControlsHostRef}
           data-composer-context-control
           data-chat-resting-composer-controls-host="true"
-          className="flex min-w-0 flex-1 items-center justify-start overflow-x-clip overflow-y-visible"
+          className="order-last flex min-w-0 flex-1 items-center justify-end overflow-x-clip overflow-y-visible"
         />
       ) : null}
 
@@ -724,7 +724,7 @@ export const BranchToolbar = memo(function BranchToolbar({
         <BranchToolbarBranchSelector
           forceNewWorktree={forceNewWorktree}
           ref={branchSelectorRef}
-          className="min-w-0 flex-initial justify-end @3xl/composer-surface:ml-auto"
+          className="min-w-0 flex-initial justify-start"
           environmentId={environmentId}
           threadId={threadId}
           {...(draftId ? { draftId } : {})}

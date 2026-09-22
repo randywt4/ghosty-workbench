@@ -1,7 +1,10 @@
 import type { ConfirmDialogOptions, ContextMenuItem, LocalApi } from "@t3tools/contracts";
 
 import { requestConfirmDialog } from "./confirmDialog";
-import { dismissContextMenu, showContextMenuFallback } from "./contextMenuFallback";
+import {
+  dismissMonocodeContextMenu,
+  showMonocodeContextMenu,
+} from "./components/monocode/MonocodeContextMenu";
 import { readBrowserClientSettings, writeBrowserClientSettings } from "./clientPersistenceStorage";
 
 let cachedApi: LocalApi | undefined;
@@ -46,18 +49,15 @@ function createBrowserLocalApi(): LocalApi {
         items: readonly ContextMenuItem<T>[],
         position?: { x: number; y: number },
       ): Promise<T | null> => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.showContextMenu(items, position) as Promise<T | null>;
-        }
-        return showContextMenuFallback(items, position);
+        // Shared MonoCode renderer for every caller (sessions, multi-select,
+        // files, right-panel tabs...). The native OS menu no longer catches
+        // app menus; Electron is untouched because live processes must stay.
+        return showMonocodeContextMenu(items, position);
       },
-      // A native desktop menu blocks keyboard input and closes on outside
-      // interaction, so nothing to do there; the DOM fallback needs an explicit
-      // dismiss when the state behind it goes away.
+      // The shared menu renders in-DOM on every surface, so close always
+      // dismisses it with a null resolution (outside/Escape equivalent).
       close: async () => {
-        if (!window.desktopBridge) {
-          dismissContextMenu();
-        }
+        dismissMonocodeContextMenu();
       },
     },
     persistence: {

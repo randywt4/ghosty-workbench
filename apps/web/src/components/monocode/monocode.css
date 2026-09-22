@@ -7,7 +7,7 @@
 }
 
 .monocode-composer [data-chat-composer-footer="true"] {
-  padding-inline: 10px;
+  padding-inline: 8px;
   padding-bottom: 8px;
 }
 
@@ -16,17 +16,32 @@
   scrollbar-width: none;
 }
 
-.monocode-composer button[type="submit"] {
-  border-radius: 6px;
+.monocode-composer .primary-action:not(:disabled) {
+  background: white;
+  color: black;
 }
 
-.monocode-composer button[type="submit"]:not(:disabled) {
-  background: var(--foreground);
-  color: var(--background);
+.monocode-composer .primary-action:not(:disabled):hover {
+  background: color-mix(in srgb, white 90%, transparent);
 }
 
-.monocode-composer button[type="submit"]:not(:disabled):hover {
-  background: color-mix(in srgb, var(--foreground) 90%, transparent);
+.monocode-composer .primary-action:disabled {
+  background: color-mix(in srgb, white 30%, transparent);
+  color: color-mix(in srgb, black 40%, transparent);
+}
+
+html:not(.dark) .monocode-composer .primary-action:not(:disabled) {
+  background: var(--color-content);
+  color: var(--color-background-base);
+}
+
+html:not(.dark) .monocode-composer .primary-action:not(:disabled):hover {
+  background: color-mix(in srgb, var(--color-content) 90%, transparent);
+}
+
+html:not(.dark) .monocode-composer .primary-action:disabled {
+  background: color-mix(in srgb, var(--color-content) 25%, transparent);
+  color: color-mix(in srgb, var(--color-background-base) 75%, transparent);
 }
 
 @media (pointer: coarse) {
@@ -69,19 +84,6 @@
   --sidebar: #1e1e1e;
   --sidebar-row-hover: #292929;
   --sidebar-row-active: #333;
-}
-.monocode-legacy-row {
-  height: auto;
-  min-height: 78px;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 6px;
-}
-.monocode-legacy-row [data-testid^="thread-title-"] {
-  font-size: 13px;
-  font-weight: 600;
 }
 @media (pointer: coarse) {
   .monocode-composer .monocode-primary-action,

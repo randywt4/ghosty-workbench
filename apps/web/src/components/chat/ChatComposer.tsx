@@ -1,4 +1,4 @@
-import { Plus, ArrowUp } from "../monocode/icons";
+import { ArrowUp } from "../monocode/icons";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
 import { runtimeModeConfig, runtimeModeOptions as runtimeModes } from "./runtimeModeConfig";
 import { isLocalEnvironmentDisabled } from "../../localEnvironment";
@@ -252,6 +252,8 @@ import {
 import { useEnvironmentQuery } from "~/state/query";
 import { useDebouncedValue } from "~/state/queries";
 import { ProviderModelPicker } from "./ProviderModelPicker";
+import { ComposerAccessPicker } from "../monocode/ComposerAccessPicker";
+import { ComposerPlusMenu } from "../monocode/ComposerPlusMenu";
 import { resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
@@ -1036,7 +1038,7 @@ function ComposerCommandMenuLayer(props: { anchor: HTMLElement | null; children:
 
   return createPortal(
     <div
-      className="pointer-events-auto fixed z-40 flex flex-col"
+      className="monocode-surface pointer-events-auto fixed z-40 flex flex-col"
       data-composer-drawer-layer="true"
       style={{
         bottom: position.bottom,
@@ -1214,6 +1216,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   runtimeModeOptions: ReadonlyArray<RuntimeModeOption>;
   size?: "sm" | "xs";
   hidden?: boolean;
+  busy?: boolean;
   onToggleInteractionMode: () => void;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
 }) {
@@ -1241,9 +1244,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 "shrink-0 whitespace-nowrap",
                 props.interactionMode === "plan"
                   ? "bg-accent text-accent-foreground hover:bg-accent/80"
-                  : size === "xs"
-                    ? undefined
-                    : "text-secondary-label hover:text-foreground",
+                  : undefined,
               )}
               type="button"
               onClick={props.onToggleInteractionMode}
@@ -1258,11 +1259,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
               className="text-current opacity-100"
             />
           ) : (
-            <ComposerControlIcon
-              icon={BotIcon}
-              size={size}
-              opticalSize={size === "xs" ? "default" : "large"}
-            />
+            <ComposerControlIcon icon={BotIcon} size={size} />
           )}
           <span data-composer-control-label className="sr-only sm:not-sr-only">
             {props.interactionMode === "plan" ? "Plan" : "Build"}
@@ -1277,54 +1274,62 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
     <>
       <ComposerControlSeparator size={size} />
 
-      <Tooltip>
-        <Select
-          open={open}
-          onOpenChange={setOpen}
+      {size === "sm" ? (
+        <ComposerAccessPicker
           value={props.runtimeMode}
-          onValueChange={(value) => props.onRuntimeModeChange(value!)}
-        >
-          <TooltipTrigger
-            render={
-              <ComposerSelectControl
-                data-composer-shortcut="composer.mode"
-                size={size}
-                className={size === "xs" ? undefined : "font-medium"}
-                aria-label="Runtime mode"
-              />
-            }
+          options={props.runtimeModeOptions.map((option) => option.mode)}
+          busy={props.busy ?? false}
+          onChange={props.onRuntimeModeChange}
+        />
+      ) : (
+        <Tooltip>
+          <Select
+            open={open}
+            onOpenChange={setOpen}
+            value={props.runtimeMode}
+            onValueChange={(value) => props.onRuntimeModeChange(value!)}
           >
-            <ComposerControlIcon icon={RuntimeModeIcon} size={size} />
-            <SelectValue data-composer-control-label>{runtimeModeOption.label}</SelectValue>
-          </TooltipTrigger>
-          <SelectPopup alignItemWithTrigger={false} {...composerFloatingLayerProps}>
-            {props.runtimeModeOptions.map((option) => {
-              const OptionIcon = option.icon;
-              return (
-                <SelectItem
-                  key={option.mode}
-                  value={option.mode}
-                  hideIndicator
-                  className="min-w-64 py-2"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid min-w-0 flex-1 gap-0.5">
-                      <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                        <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {option.label}
-                      </span>
-                      <span className="text-muted-foreground text-xs leading-4">
-                        {option.description}
-                      </span>
+            <TooltipTrigger
+              render={
+                <ComposerSelectControl
+                  data-composer-shortcut="composer.mode"
+                  size={size}
+                  aria-label="Runtime mode"
+                />
+              }
+            >
+              <ComposerControlIcon icon={RuntimeModeIcon} size={size} />
+              <SelectValue data-composer-control-label>{runtimeModeOption.label}</SelectValue>
+            </TooltipTrigger>
+            <SelectPopup alignItemWithTrigger={false} {...composerFloatingLayerProps}>
+              {props.runtimeModeOptions.map((option) => {
+                const OptionIcon = option.icon;
+                return (
+                  <SelectItem
+                    key={option.mode}
+                    value={option.mode}
+                    hideIndicator
+                    className="min-w-64 py-2"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="grid min-w-0 flex-1 gap-0.5">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                          <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                          {option.label}
+                        </span>
+                        <span className="text-muted-foreground text-xs leading-4">
+                          {option.description}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </SelectItem>
-              );
-            })}
-          </SelectPopup>
-        </Select>
-        <TooltipPopup side="top">{runtimeModeOption.description}</TooltipPopup>
-      </Tooltip>
+                  </SelectItem>
+                );
+              })}
+            </SelectPopup>
+          </Select>
+          <TooltipPopup side="top">{runtimeModeOption.description}</TooltipPopup>
+        </Tooltip>
+      )}
 
       {interactionModeToggle}
     </>
@@ -1599,6 +1604,14 @@ export interface ChatComposerProps {
 
   // Queued runs strip rendered above the composer (v2 queue/steer).
   queuedRunsControl?: ReactNode;
+  /**
+   * Donor top-bar slot (primary-owned): ChatView moves its existing
+   * context/model-strip JSX here unchanged (callbacks/refs intact) so the
+   * checkout/branch header renders INSIDE the composer surface. Rendered
+   * directly inside ComposerSurface.Main before data-chat-composer-surface;
+   * follows existing visibility props from the caller.
+   */
+  contextHeader?: ReactNode;
   // Queued-message edit mode: attachments already stored on the message being
   // edited. Rendered in the attachment strip with a remove control; removal is
   // client state in ChatView until the edit is saved.
@@ -2835,6 +2848,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ],
   );
 
+  // Split triggers (user override): the model trigger opens the donor
+  // model flyout directly; the standalone reasoning/traits pill keeps its
+  // donor glass and menu beside it.
   const providerTraitsMenuContent = renderProviderTraitsMenuContent({
     provider: selectedProvider,
     instanceId: selectedInstanceId,
@@ -5247,6 +5263,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const iconOnlyBlockCount = composerControlsCollapsed
     ? restingControlsIconOnlyBlockCount
     : expandedControlsLayout.iconOnlyBlockCount;
+  // Traits keep their standalone pill beside the model trigger.
   const restingProviderTraitsPicker = renderProviderTraitsPicker({
     ...providerTraitsPickerInput,
     size: composerControlsCollapsed ? "xs" : "sm",
@@ -5276,6 +5293,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           runtimeModeOptions={compatibleRuntimeModeOptions}
           size={composerControlsCollapsed ? "xs" : "sm"}
           hidden={composerControlsHidden || restingHiddenBlockCount > 0}
+          busy={phase === "running"}
           onToggleInteractionMode={toggleInteractionMode}
           onRuntimeModeChange={handleRuntimeModeChange}
         />
@@ -6520,7 +6538,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         : null}
       <ComposerBanner.Dock>
         <ComposerBanner.Column>
-          {props.queuedRunsControl}
           <ComposerBannerStack
             key={activeThreadId}
             className="relative z-0"
@@ -6697,6 +6714,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         ) : null}
       </ComposerBanner.Dock>
       <div className="relative">
+        {props.queuedRunsControl}
         <ComposerSurface.Main
           ref={composerMainSurfaceRef}
           data-inline-resting-controls={restingControlsHost === null ? "true" : undefined}
@@ -6705,6 +6723,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           }
           className={composerProviderState.composerFrameClassName}
         >
+          {props.contextHeader}
           <div
             ref={composerSurfaceRef}
             data-chat-composer-surface="true"
@@ -6765,8 +6784,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               ref={setComposerMenuAnchor}
               data-chat-composer-body="true"
               className={cn(
-                "relative px-3 pb-2 sm:px-4",
-                "pt-3.5 sm:pt-4",
+                // Donor textarea/highlight geometry (Composer.tsx): px-3 py-3.
+                // Approval keeps its taller bottom pad; resting keeps its
+                // compact strip; attachments render above and are unaffected.
+                "relative px-3 py-3",
                 isComposerApprovalState && "pb-3 sm:pb-4",
                 isComposerCollapsedMobile && "hidden",
                 isComposerResting && "py-2 sm:py-2",
@@ -7280,7 +7301,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                 ? "Enable a provider in Settings to send a message"
                                 : phase === "disconnected"
                                   ? DISCONNECTED_COMPOSER_PLACEHOLDER
-                                  : "Ask anything, @tag files/folders, $use skills, or / for commands"
+                                  : "Ask, build, / for commands, @ for references... "
                     }
                     disabled={
                       isConnecting ||
@@ -7370,24 +7391,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                           });
                         }}
                       />
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              onPointerDown={(event) => event.preventDefault()}
-                              onClick={() => attachmentInputRef.current?.click()}
-                              className="monocode-attach size-6.5 shrink-0 rounded-md bg-foreground/10 p-0 hover:bg-foreground/15"
-                              aria-label="Attach files"
-                            />
-                          }
-                        >
-                          <Plus />
-                        </TooltipTrigger>
-                        <TooltipPopup>Attach files</TooltipPopup>
-                      </Tooltip>
+                      <ComposerPlusMenu
+                        onUploadFile={() => attachmentInputRef.current?.click()}
+                        plan={
+                          planModeUiEnabled
+                            ? {
+                                selected: interactionMode === "plan",
+                                onToggle: toggleInteractionMode,
+                              }
+                            : null
+                        }
+                        onFocusComposer={focusComposer}
+                      />
                     </>
                   ) : null}
                   {composerControlsCollapsed ? null : composerControls}

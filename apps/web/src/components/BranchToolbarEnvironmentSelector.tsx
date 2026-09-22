@@ -3,6 +3,8 @@ import { Tooltip, TooltipTrigger, TooltipPopup } from "./ui/tooltip";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { ScaleIcon } from "lucide-react";
 import { memo, useMemo } from "react";
+import { composerPickerTriggerClassName } from "./monocode/ComposerPickerTrigger";
+import "./monocode/composer-picker.css";
 
 import type { EnvironmentOption } from "./BranchToolbar.logic";
 import { cn } from "../lib/utils";
@@ -70,14 +72,20 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
     const lockedRow = (
       <span
         className={cn(
-          "inline-flex h-7 min-w-0 max-w-full items-center gap-1 border border-transparent px-[calc(--spacing(2)-1px)] font-normal text-muted-foreground/70 text-xs sm:h-6",
-          displayMode === "panel" && THREAD_DETAILS_PANEL_LOCKED_ROW_CLASS,
+          displayMode === "panel"
+            ? cn(
+                "inline-flex h-7 min-w-0 max-w-full items-center gap-1 border border-transparent px-[calc(--spacing(2)-1px)] font-normal text-muted-foreground/70 text-xs sm:h-6",
+                THREAD_DETAILS_PANEL_LOCKED_ROW_CLASS,
+              )
+            : "monocode-surface inline-flex h-6 min-w-fit max-w-full shrink-0 items-center gap-1.5 px-1.5 text-[12px] text-content/45",
         )}
         data-composer-context-control
       >
         <EnvironmentMachineIcon
           kind={activeEnvironment?.machine ?? "server"}
-          className={displayMode === "panel" ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3 shrink-0"}
+          className={
+            displayMode === "panel" ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3.5 shrink-0"
+          }
         />
         <ComposerContextLabel displayMode={displayMode}>
           {activeEnvironment?.label ?? "Run on"}
@@ -108,9 +116,16 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
               variant="ghost"
               size={displayMode === "panel" ? "default" : "xs"}
               className={cn(
-                "min-w-0 max-w-full font-normal text-xs!",
-                displayMode === "panel" && THREAD_DETAILS_PANEL_SELECT_ROW_CLASS,
+                displayMode === "panel"
+                  ? cn(
+                      "min-w-0 max-w-full font-normal text-xs!",
+                      THREAD_DETAILS_PANEL_SELECT_ROW_CLASS,
+                    )
+                  : composerPickerTriggerClassName("max-w-full"),
               )}
+              icon={
+                displayMode === "panel" ? undefined : <span aria-hidden="true" className="hidden" />
+              }
               aria-label="Run on"
               data-composer-shortcut="composer.host"
               data-composer-context-control
@@ -120,7 +135,7 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
           {autoEnvironmentLabel ? (
             <ScaleIcon
               className={
-                displayMode === "panel" ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3 shrink-0"
+                displayMode === "panel" ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3.5 shrink-0"
               }
               aria-hidden="true"
             />
@@ -128,7 +143,7 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
             <EnvironmentMachineIcon
               kind={activeEnvironment?.machine ?? "server"}
               className={
-                displayMode === "panel" ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3 shrink-0"
+                displayMode === "panel" ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3.5 shrink-0"
               }
             />
           )}

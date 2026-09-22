@@ -13,6 +13,14 @@ import { deriveProjectIdentity } from "../projectIdentity";
 import { projectIconColorClassName } from "../projectIconColors";
 import { ProjectMonogram } from "./ProjectMonogram";
 import { cn } from "~/lib/utils";
+import { useLegacySidebarEnabled } from "../hooks/useSettings";
+import { useUiStateStore } from "../uiStateStore";
+import {
+  projectAppearanceKey,
+  resolveProjectAppearance,
+  PROJECT_ACCENT_COLORS,
+} from "../projectAppearance";
+import { ProjectMascot } from "./monocode/ProjectMascot";
 
 const DynamicIcon = lazy(() =>
   import("lucide-react/dynamic").then((module) => ({ default: module.DynamicIcon })),
@@ -29,12 +37,30 @@ function DynamicProjectIconFallback() {
 export type ProjectFaviconProject = Pick<
   EnvironmentProject,
   "environmentId" | "workspaceRoot" | "title" | "faviconPath" | "projectIcon"
->;
-export function ProjectFavicon(input: {
+> & { memberProjects?: readonly { environmentId: string; workspaceRoot: string }[] };
+type ProjectFaviconProps = {
   project: ProjectFaviconProject;
   className?: string | undefined;
   fallbackIcon?: ComponentType<{ className?: string }>;
-}) {
+};
+
+export function ProjectFavicon(input: ProjectFaviconProps) {
+  const workbench = useLegacySidebarEnabled();
+  const key = projectAppearanceKey(input.project);
+  const appearances = useUiStateStore((state) => state.projectAppearanceByKey);
+  const appearance = resolveProjectAppearance(input.project, appearances);
+  if (!workbench) return <NativeProjectFavicon {...input} />;
+  return (
+    <ProjectMascot
+      project={key}
+      name={appearance?.mascot ?? null}
+      color={appearance?.color ?? PROJECT_ACCENT_COLORS[1]}
+      className={cn("size-3.5 shrink-0", input.className)}
+    />
+  );
+}
+
+function NativeProjectFavicon(input: ProjectFaviconProps) {
   const { project } = input;
   const src = useAtomValue(
     projectFaviconUrlAtom({

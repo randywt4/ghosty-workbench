@@ -10,6 +10,10 @@ import {
   ShieldQuestionIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import { readProject } from "../state/entities";
+import { useUiStateStore } from "../uiStateStore";
+import { projectAppearanceKey, projectNotificationsMuted } from "../projectAppearance";
 
 import { getClientSettings, useClientSettings } from "../hooks/useSettings";
 import { useEnvironmentIds } from "../state/environments";
@@ -140,6 +144,15 @@ function EnvironmentNotifications({
             ? "completion"
             : null;
       if (!kind) continue;
+      const project = readProject(scopeProjectRef(environmentId, thread.projectId));
+      const isMuted = () =>
+        project !== null &&
+        projectNotificationsMuted(
+          useUiStateStore.getState().projectAppearanceByKey?.[projectAppearanceKey(project)],
+        );
+      // Consume the event above before suppressing delivery. Unmuting must not
+      // replay completions or approval alerts that happened during the mute.
+      if (isMuted()) continue;
       const title =
         kind === "completion"
           ? "Thread completed"
@@ -151,8 +164,9 @@ function EnvironmentNotifications({
                 ? "Thread failed"
                 : "Input needed";
       if (hasNotificationSound(mode)) {
-        void playNotificationSound(kind, () =>
-          hasNotificationSound(getClientSettings().notificationMode),
+        void playNotificationSound(
+          kind,
+          () => hasNotificationSound(getClientSettings().notificationMode) && !isMuted(),
         );
       }
       if (
