@@ -1,5 +1,17 @@
 # T3 Code
 
+## Personal fork: Ghosty Workbench
+
+This checkout is Randy's personal fork. Read
+`docs/operations/ghosty-workbench.md` before launching or updating it. Local `main`
+publishes to `origin/ghosty-ui`; do not pull `origin/main` into it automatically.
+Use the dedicated Windows launcher and isolated data, not an installed T3 home.
+Product direction: MonoCode-inspired composer/icons and LEGACY project/session
+sidebar; leave activity/settle mode alone. Cloud and new features are separate work.
+For continuity, use the sibling GhostyOperations project's
+`skills/ghosty-workbench/SKILL.md` and `plans/tooling/ghosty-workbench-current.md`.
+The upstream guidance below still applies unless Randy explicitly overrides it.
+
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity) and serves web, desktop, and mobile clients.
 
 You can think of T3 Code as an open source "bring-your-own-subscription" alternative to apps like Claude Desktop, Codex App, Cursor Glass and Conductor.

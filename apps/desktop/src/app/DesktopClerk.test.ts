@@ -30,11 +30,16 @@ import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopClerk from "./DesktopClerk.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 
-const makeDesktopClerkLayer = (isDevelopment = true, events: string[] = []) => {
+const makeDesktopClerkLayer = (
+  isDevelopment = true,
+  events: string[] = [],
+  desktopUserDataDirectory?: string,
+) => {
   const environment = DesktopEnvironment.DesktopEnvironment.of({
     stateDir: "/tmp/t3-state",
     isDevelopment,
     appDataDirectory: "/tmp/app-data",
+    desktopUserDataDirectory,
   } as unknown as DesktopEnvironment.DesktopEnvironment["Service"]);
 
   const electronApp = {
@@ -60,6 +65,21 @@ describe("DesktopClerk", () => {
   beforeEach(() => {
     createClerkBridgeMock.mockReset();
     storageMock.mockReset();
+  });
+
+  it.effect("sets the fork profile before the SDK acquires its instance lock", () => {
+    const events: string[] = [];
+    storageMock.mockReturnValue(storageAdapter);
+    createClerkBridgeMock.mockImplementation(() => {
+      events.push("createClerkBridge");
+      return { cleanup: vi.fn(), isPrimaryInstance: true };
+    });
+    return Effect.gen(function* () {
+      yield* Effect.scoped(
+        Layer.build(makeDesktopClerkLayer(true, events, "/tmp/ghosty-electron")),
+      );
+      assert.deepEqual(events, ["setPath:userData:/tmp/ghosty-electron", "createClerkBridge"]);
+    });
   });
 
   it.effect("acquires and releases the SDK bridge with the layer", () => {

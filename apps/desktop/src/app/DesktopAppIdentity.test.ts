@@ -147,6 +147,18 @@ const withIdentity = <A, E, R>(
 };
 
 describe("DesktopAppIdentity", () => {
+  it.effect("uses the configured fork profile even when a legacy profile exists", () =>
+    withIdentity(
+      Effect.gen(function* () {
+        const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
+        assert.equal(yield* identity.resolveUserDataPath, "/tmp/ghosty-electron");
+      }),
+      {
+        legacyPathExists: true,
+        environment: { env: { T3CODE_DESKTOP_USER_DATA_DIR: "/tmp/ghosty-electron" } },
+      },
+    ),
+  );
   it.effect("isolates the V2 profile even when the legacy V1 profile exists", () =>
     withIdentity(
       Effect.gen(function* () {
