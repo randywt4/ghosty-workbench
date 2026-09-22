@@ -1,4 +1,7 @@
-// This file mostly exists because we want dev mode to say "T3 Code (Dev)" instead of "electron"
+// This file mostly exists because we want dev mode to say "Ghosty Workbench (Dev)" instead of "electron"
+// Personal fork: display/bundle IDs are Ghosty Workbench so dev + packaged apps
+// never collide with official T3. Transport schemes (t3code/t3code-dev) stay
+// stable for upstream compatibility; only display + OS identity change.
 
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
@@ -15,19 +18,28 @@ const repoRoot = NodePath.resolve(desktopDir, "..", "..");
 const devBundleIdSuffix = NodePath.basename(repoRoot)
   .toLowerCase()
   .replaceAll(/[^a-z0-9]+/g, "");
-const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+const APP_DISPLAY_NAME = isDevelopment ? "Ghosty Workbench (Dev)" : "Ghosty Workbench";
 const APP_BUNDLE_ID = isDevelopment
-  ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
-  : "com.t3tools.t3code";
+  ? `com.ghosty.workbench.dev.${devBundleIdSuffix || "local"}`
+  : "com.ghosty.workbench";
 const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
-const LAUNCHER_VERSION = 19;
-const developmentMacIconPngPath = NodePath.join(
+const LAUNCHER_VERSION = 20;
+const developmentMacIconPngPath = NodePath.join(repoRoot, "assets", "ghosty", "workbench-1024.png");
+const productionMacIconPngPath = NodePath.join(repoRoot, "assets", "ghosty", "workbench-1024.png");
+// Windows dev/taskbar runtime icon: BrowserWindow uses DesktopAssets ico, and any
+// dev shortcut should point at this ICO so the taskbar never shows upstream T3 art.
+const developmentWindowsIconIcoPath = NodePath.join(
   repoRoot,
   "assets",
-  "dev",
-  "blueprint-macos-1024.png",
+  "ghosty",
+  "workbench-windows.ico",
 );
-const productionMacIconPngPath = NodePath.join(repoRoot, "assets", "prod", "black-macos-1024.png");
+const productionWindowsIconIcoPath = NodePath.join(
+  repoRoot,
+  "assets",
+  "ghosty",
+  "workbench-windows.ico",
+);
 // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher script has no Effect runtime.
 const hostPlatform = NodeOS.platform();
 
@@ -203,6 +215,10 @@ function registerMacLauncherBundle(appBundlePath) {
 }
 
 // Bundle-internal paths are macOS paths whatever host builds them.
+export function resolveWindowsLauncherIconPath(development = isDevelopment) {
+  return development ? developmentWindowsIconIcoPath : productionWindowsIconIcoPath;
+}
+
 export function resolveMacLauncherIconPaths(runtimeDir, development = isDevelopment) {
   return {
     sourceIconPath: development ? developmentMacIconPngPath : productionMacIconPngPath,
@@ -270,8 +286,9 @@ export function resolveMacBundleInfoPlistStrings(executableName) {
     CFBundleExecutable: executableName,
     CFBundleIconFile: "icon.icns",
     NSScreenCaptureUsageDescription:
-      "T3 Code captures the active window when you use the snapshot shortcut.",
-    NSDocumentsFolderUsageDescription: "T3 Code reads project files you open in the desktop app.",
+      "Ghosty Workbench captures the active window when you use the snapshot shortcut.",
+    NSDocumentsFolderUsageDescription:
+      "Ghosty Workbench reads project files you open in the desktop app.",
   };
 }
 
@@ -402,7 +419,7 @@ function buildMacLauncher(electronBinaryPath) {
   if (isDevelopment) {
     // Keep Electron's native executable inside the branded bundle. Launching the
     // node_modules copy makes macOS associate the process (and Dock label) with
-    // Electron.app even though this bundle's Info.plist has the T3 Code name.
+    // Electron.app even though this bundle's Info.plist has the Ghosty Workbench name.
     // Its conventional executable name also keeps Electron's default-app runtime
     // in development mode instead of making app.isPackaged report true.
     writeDevelopmentEnvironmentScript();

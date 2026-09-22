@@ -11,6 +11,7 @@ Run `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ghosty-desktop.
 The desktop and Start-menu shortcuts invoke the same launcher. This starts the
 upstream `dev:desktop` task: a local Vite renderer inside Electron plus its local
 backend. React/CSS edits hot-reload; desktop/server edits can rebuild or restart.
+Use `-Action InstallShortcuts` to recreate the shortcuts with the current icon.
 The first launch builds the native shell. No public website or Docker is involved.
 
 `-Action Status` inspects the captured runner identity. `-Action Stop` stops only
@@ -57,6 +58,11 @@ repo-wide tests just to preview CSS. Capture actual screenshots for Randy's revi
   protocol names to accomplish cosmetic branding. Avoid unnecessary upstream edits.
 
 ## Packaging later
+
+The approved icon is original concept 03: the ghost-sheet dog behind a laptop.
+Master and generated sizes live in `assets/ghosty`; regenerate them with
+`node scripts/export-ghosty-icons.mjs`. Keep attribution and upstream service
+names intact. A Ghosty mobile app/hosted site has not been released.
 
 Development mode is for live edits; a separately packaged app is the daily-use
 snapshot. Branding must cover icons, visible titles, installer identity, app data,

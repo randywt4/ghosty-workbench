@@ -63,7 +63,6 @@ import { getDriverOption } from "../settings/providerDriverMeta";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectList";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
-import { T3Wordmark } from "../T3Wordmark";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -190,12 +189,17 @@ export function WelcomeWizard({
         initialFocus={() => document.getElementById("onboarding-pairing-url") ?? true}
       >
         <WizardHeader
-          title="Set up T3 Code"
+          title="Set up Ghosty Workbench"
           identity={
-            <div className="flex items-baseline gap-1.5" role="img" aria-label="T3 Code">
-              <T3Wordmark className="h-4 w-auto shrink-0" aria-hidden />
-              <span className="text-[1.4rem] font-medium tracking-tight text-muted-foreground">
-                Code
+            <div className="flex items-center gap-2" role="img" aria-label="Ghosty Workbench">
+              <img
+                src="/ghosty-workbench-32.png"
+                alt=""
+                aria-hidden
+                className="h-6 w-6 shrink-0 rounded-md object-contain"
+              />
+              <span className="text-[1.4rem] font-medium tracking-tight text-foreground">
+                Ghosty <span className="text-muted-foreground">Workbench</span>
               </span>
             </div>
           }
@@ -478,7 +482,7 @@ function ConnectAccountOption({
           </p>
           <CommandBlock command="npx t3 connect" className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
-            Keep T3 Code running. Select the computers you want to set up above.
+            Keep Ghosty Workbench running. Select the computers you want to set up above.
           </p>
         </div>
       </CollapsiblePanel>
@@ -591,8 +595,8 @@ function PairingForm({
             </p>
             <CommandBlock command="npx t3 pair" className="mt-2" />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start T3 Code first, or run <code className="font-mono">npx t3 serve</code>. Add{" "}
-              <code className="font-mono">--tailscale</code> to use your tailnet.
+              Start Ghosty Workbench first, or run <code className="font-mono">npx t3 serve</code>.
+              Add <code className="font-mono">--tailscale</code> to use your tailnet.
             </p>
           </CollapsiblePanel>
         </Collapsible>

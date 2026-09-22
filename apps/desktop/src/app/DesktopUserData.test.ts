@@ -3,7 +3,6 @@ import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import * as PlatformError from "effect/PlatformError";
 
 import { resolveUserDataPath } from "./DesktopUserData.ts";
 
@@ -28,71 +27,50 @@ it.effect("isolates an explicit profile without inspecting or copying upstream d
   ),
 );
 
-it.effect("identifies a failed source read and preserves its cause", () =>
+it.effect("uses fork dev/prod profile names that never collide with official T3", () =>
   Effect.gen(function* () {
     const path = yield* Path.Path;
-    const sourceState = path.join("/profiles", "t3code", "Local State");
-    const cause = PlatformError.systemError({
-      _tag: "PermissionDenied",
-      module: "FileSystem",
-      method: "readFileString",
-      pathOrDescriptor: sourceState,
+    const dev = yield* resolveUserDataPath({
+      appDataDirectory: "/profiles",
+      isDevelopment: true,
+      platform: "win32",
     });
-    yield* Effect.gen(function* () {
-      const error = yield* resolveUserDataPath({
-        appDataDirectory: "/profiles",
-        isDevelopment: false,
-        platform: "win32",
-      }).pipe(Effect.flip);
-      assert.equal(error.operation, "read");
-      assert.equal(error.resourcePath, sourceState);
-      assert.equal(error.category, "PermissionDenied");
-      assert.strictEqual(error.cause, cause);
-    }).pipe(
-      Effect.provideService(
-        FileSystem.FileSystem,
-        FileSystem.makeNoop({
-          exists: (path) => Effect.succeed(path === sourceState),
-          readFileString: () => Effect.fail(cause),
-        }),
-      ),
-    );
-  }).pipe(Effect.provide(NodeServices.layer)),
+    const prod = yield* resolveUserDataPath({
+      appDataDirectory: "/profiles",
+      isDevelopment: false,
+      platform: "win32",
+    });
+    assert.equal(dev, path.join("/profiles", "ghosty-workbench-dev"));
+    assert.equal(prod, path.join("/profiles", "ghosty-workbench"));
+  }).pipe(
+    Effect.provide(NodeServices.layer),
+    Effect.provideService(
+      FileSystem.FileSystem,
+      FileSystem.makeNoop({
+        exists: () => Effect.die("Fork defaults must not inspect upstream profiles"),
+      }),
+    ),
+  ),
 );
 
-for (const sourceName of ["t3code", "T3 Code (Alpha)"]) {
-  it.effect(
-    `preserves Windows credential keys from ${sourceName} without copying browser databases`,
-    () =>
-      Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-v2-profile-" });
-        const source = path.join(directory, sourceName);
-        const destination = path.join(directory, "t3code-v2");
-        const state = '{"os_crypt":{"encrypted_key":"test-encrypted-key"}}';
-        yield* fs.makeDirectory(path.join(directory, "T3 Code (Alpha)"), { recursive: true });
-        yield* fs.makeDirectory(path.join(source, "IndexedDB"), { recursive: true });
-        yield* fs.writeFileString(path.join(source, "Local State"), state);
-        yield* fs.writeFileString(path.join(source, "IndexedDB", "LOCK"), "V1 owns this database");
-        yield* resolveUserDataPath({
-          appDataDirectory: directory,
-          isDevelopment: false,
-          platform: "win32",
-        });
-        assert.equal(yield* fs.readFileString(path.join(destination, "Local State")), state);
-        assert.equal(yield* fs.readFileString(path.join(source, "Local State")), state);
-        assert.isFalse(yield* fs.exists(path.join(destination, "IndexedDB")));
-        yield* fs.writeFileString(path.join(destination, "Local State"), "existing V2 state");
-        yield* resolveUserDataPath({
-          appDataDirectory: directory,
-          isDevelopment: false,
-          platform: "win32",
-        });
-        assert.equal(
-          yield* fs.readFileString(path.join(destination, "Local State")),
-          "existing V2 state",
-        );
-      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
-  );
-}
+it.effect("does not migrate upstream T3 profiles into the fork directory", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const directory = yield* fs.makeTempDirectoryScoped({ prefix: "ghosty-profile-" });
+    // Upstream data that must be left alone.
+    for (const upstream of ["t3code", "t3code-v2", "t3code-dev", "T3 Code (Alpha)"]) {
+      const source = path.join(directory, upstream);
+      yield* fs.makeDirectory(source, { recursive: true });
+      yield* fs.writeFileString(path.join(source, "Local State"), '{"upstream":true}');
+    }
+    const result = yield* resolveUserDataPath({
+      appDataDirectory: directory,
+      isDevelopment: false,
+      platform: "win32",
+    });
+    assert.equal(result, path.join(directory, "ghosty-workbench"));
+    assert.isFalse(yield* fs.exists(path.join(result, "Local State")));
+    assert.isFalse(yield* fs.exists(result));
+  }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+);

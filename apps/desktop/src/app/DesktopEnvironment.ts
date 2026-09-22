@@ -92,7 +92,9 @@ export class DesktopEnvironment extends Context.Service<
   }
 >()("@t3tools/desktop/app/DesktopEnvironment") {}
 
-const APP_BASE_NAME = "T3 Code";
+// Personal fork display branding. Internal package/transport identifiers
+// (t3code, T3CODE_HOME, t3code://) stay stable for upstream compatibility.
+const APP_BASE_NAME = "Ghosty Workbench";
 
 function resolveDesktopAppStageLabel(input: {
   readonly isDevelopment: boolean;
@@ -235,7 +237,10 @@ const make = Effect.fn("desktop.environment.make")(function* (
     branding,
     displayName,
     appUserModelId: Option.getOrElse(config.appUserModelIdOverride, () =>
-      isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
+      // Fork taskbar identity must not collide with official T3.
+      // Explicit T3CODE_DESKTOP_APP_USER_MODEL_ID still wins (GhostyWorkbenchDev
+      // sets com.ghosty.workbench.dev via the launcher).
+      isDevelopment ? "com.ghosty.workbench.dev" : "com.ghosty.workbench",
     ),
     linuxDesktopEntryName: resolveLinuxDesktopEntryName(isDevelopment),
     linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",

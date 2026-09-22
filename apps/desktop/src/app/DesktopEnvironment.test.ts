@@ -79,7 +79,10 @@ describe("DesktopEnvironment", () => {
       assert.equal(environment.serverRoot, "/repo");
       assert.equal(environment.backendEntryPath, "/repo/apps/server/dist/bin.mjs");
       assert.equal(environment.backendCwd, "/repo");
-      assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev");
+      assert.equal(environment.appUserModelId, "com.ghosty.workbench.dev");
+      assert.equal(environment.displayName, "Ghosty Workbench (Dev)");
+      assert.equal(environment.branding.baseName, "Ghosty Workbench");
+      assert.equal(environment.branding.stageLabel, "Dev");
       assert.equal(environment.linuxWmClass, "t3code-dev");
       assert.equal(environment.linuxDesktopEntryName, "com.t3tools.T3Code.Development.desktop");
       assert.deepEqual(
@@ -118,6 +121,8 @@ describe("DesktopEnvironment", () => {
       assert.equal(environment.logDir, "/tmp/t3/userdata/logs");
       assert.equal(environment.browserArtifactsDir, "/tmp/t3/userdata/browser-artifacts");
       assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata/settings.json");
+      assert.equal(environment.displayName, "Ghosty Workbench (Alpha)");
+      assert.equal(environment.appUserModelId, "com.ghosty.workbench");
       assert.equal(environment.otlpProtocol, "http/json");
     }),
   );
@@ -165,8 +170,8 @@ describe("DesktopEnvironment", () => {
       );
       const production = yield* makeEnvironment();
 
-      assert.equal(development.stateDir, "/Users/alice/.t3/dev");
-      assert.equal(production.stateDir, "/Users/alice/.t3/userdata");
+      assert.equal(development.stateDir, "/Users/alice/.ghosty-workbench/dev");
+      assert.equal(production.stateDir, "/Users/alice/.ghosty-workbench/userdata");
     }),
   );
 

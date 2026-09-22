@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('Start','Stop','Status')][string]$Action = 'Start', [switch]$ShowErrors)
+param([ValidateSet('Start','Stop','Status','InstallShortcuts')][string]$Action = 'Start', [switch]$ShowErrors)
 
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -25,6 +25,30 @@ function Get-OwnedRunner {
 try {
     $locked = $mutex.WaitOne(0)
     if (-not $locked) { throw 'Another desktop launch operation is in progress.' }
+    if ($Action -eq 'InstallShortcuts') {
+        $menu = Join-Path ([Environment]::GetFolderPath('Programs')) 'Ghosty Workbench'
+        New-Item -ItemType Directory -Path $menu -Force | Out-Null
+        $shell = New-Object -ComObject WScript.Shell
+        foreach ($directory in @([Environment]::GetFolderPath('Desktop'), $menu)) {
+            $shortcut = $shell.CreateShortcut((Join-Path $directory 'Ghosty Workbench Dev.lnk'))
+            $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+            $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $PSCommandPath + '" -ShowErrors'
+            $shortcut.WorkingDirectory = $repo
+            $shortcut.IconLocation = (Join-Path $repo 'assets/ghosty/workbench-windows.ico') + ',0'
+            $shortcut.Description = 'Local Ghosty Workbench desktop with live UI updates'
+            $shortcut.WindowStyle = 7
+            $shortcut.Save()
+        }
+        $shortcut = $shell.CreateShortcut((Join-Path $menu 'Stop Ghosty Workbench Dev.lnk'))
+        $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+        $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $PSCommandPath + '" -Action Stop -ShowErrors'
+        $shortcut.IconLocation = (Join-Path $repo 'assets/ghosty/workbench-windows.ico') + ',0'
+        $shortcut.Description = 'Stop development app and its agents; preserve saved data'
+        $shortcut.WindowStyle = 7
+        $shortcut.Save()
+        Write-Output 'Ghosty Workbench desktop and Start-menu shortcuts installed.'
+        return
+    }
     $runner = Get-OwnedRunner
     if ($Action -eq 'Status') {
         [pscustomobject]@{ running = [bool]$runner; pid = $(if ($runner) { $runner.ProcessId } else { $null }); repo = $repo; runtime = $runtime }

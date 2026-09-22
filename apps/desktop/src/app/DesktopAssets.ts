@@ -61,17 +61,14 @@ const resolveResourcePath = Effect.fn("desktop.assets.resolveResourcePath")(func
   return Option.none<string>();
 });
 
-const sourceTreeIconFileNames = {
-  dev: {
-    ico: "blueprint-windows.ico",
-    macPng: "blueprint-macos-1024.png",
-    universalPng: "blueprint-universal-1024.png",
-  },
-  prod: {
-    ico: "t3-black-windows.ico",
-    macPng: "black-macos-1024.png",
-    universalPng: "black-universal-1024.png",
-  },
+// Personal fork icons (approved original03). Primary supplies
+// assets/ghosty/workbench-1024.png and assets/ghosty/workbench-windows.ico.
+// Both dev and prod use the same Ghosty set so the Windows BrowserWindow,
+// taskbar, and dev runtime all resolve to the new ICO/PNG, not upstream T3 art.
+// Transport schemes (t3code/t3code-dev) stay stable; only display art changes.
+const ghostyIconFileNames = {
+  ico: "workbench-windows.ico",
+  png: "workbench-1024.png",
 } as const;
 
 function resolveSourceTreeIconPath(
@@ -79,15 +76,8 @@ function resolveSourceTreeIconPath(
   ext: keyof DesktopIconPaths,
 ): string | undefined {
   if (environment.isPackaged || ext === "icns") return undefined;
-  const brand = environment.isDevelopment ? "dev" : "prod";
-  const fileNames = sourceTreeIconFileNames[brand];
-  const fileName =
-    ext === "ico"
-      ? fileNames.ico
-      : environment.platform === "darwin"
-        ? fileNames.macPng
-        : fileNames.universalPng;
-  return environment.path.join(environment.rootDir, "assets", brand, fileName);
+  const fileName = ext === "ico" ? ghostyIconFileNames.ico : ghostyIconFileNames.png;
+  return environment.path.join(environment.rootDir, "assets", "ghosty", fileName);
 }
 
 const resolveIconPath = Effect.fn("desktop.assets.resolveIconPath")(function* (

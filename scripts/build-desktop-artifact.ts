@@ -23,11 +23,7 @@ import gnomeCaptureBundle from "../apps/desktop/gnome-extension/bundle.json" wit
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
 import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
-import {
-  BRAND_ASSET_PATHS,
-  resolveWebAssetBrandForChannel,
-  type WebAssetBrand,
-} from "./lib/brand-assets.ts";
+import { resolveWebAssetBrandForChannel, type WebAssetBrand } from "./lib/brand-assets.ts";
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
 import {
   findInlinedExternalPackages,
@@ -54,7 +50,9 @@ import { Command, Flag } from "effect/unstable/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
-const DESKTOP_APP_ID = "com.t3tools.t3code";
+// Personal fork installer identity: must not collide with official T3
+// (com.t3tools.t3code) for side-by-side install, taskbar grouping, or updates.
+const DESKTOP_APP_ID = "com.ghosty.workbench";
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
 
 const BuildPlatform = Schema.Literals(["mac", "linux", "win"]);
@@ -2563,18 +2561,18 @@ export function resolveDesktopRuntimeDependencies(
   );
 }
 
+// Personal fork: updater stays disabled by default (no app-update.yml) without
+// needing T3CODE_DISABLE_AUTO_UPDATE. Only an explicit
+// T3CODE_DESKTOP_UPDATE_REPOSITORY opts a packaged build into a feed; the
+// ambient GITHUB_REPOSITORY is deliberately ignored so a fork build can never
+// silently point at (or download) official T3 releases.
 export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
   updateChannel: "latest" | "nightly",
 ) {
   const env = yield* Config.all({
     updateRepository: Config.String("T3CODE_DESKTOP_UPDATE_REPOSITORY").pipe(Config.option),
-    githubRepository: Config.String("GITHUB_REPOSITORY").pipe(Config.option),
   });
-  const rawRepo = (
-    Option.getOrUndefined(env.updateRepository)?.trim() ||
-    Option.getOrUndefined(env.githubRepository)?.trim() ||
-    ""
-  ).trim();
+  const rawRepo = (Option.getOrUndefined(env.updateRepository)?.trim() || "").trim();
   if (!rawRepo) return undefined;
 
   const [owner, repo, ...rest] = rawRepo.split("/");
@@ -2608,19 +2606,17 @@ export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
   return resolveWebAssetBrandForChannel(resolveDesktopUpdateChannel(version));
 }
 
-export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIconAssets {
-  if (resolveDesktopUpdateChannel(version) === "nightly") {
-    return {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
-    };
-  }
-
+export function resolveDesktopBuildIconAssets(_version: string): DesktopBuildIconAssets {
+  // Personal fork: single Ghosty set for every channel (approved original03).
+  // Primary supplies assets/ghosty/workbench-1024.png (mac/Linux PNG + staged
+  // icon.png/icons) and assets/ghosty/workbench-windows.ico (7-size ICO staged
+  // to icon.ico for the Windows BrowserWindow, taskbar, and installer).
+  // void version keeps the channel-parameter contract for upstream compatibility.
+  void _version;
   return {
-    macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-    linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-    windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
+    macIconPng: "assets/ghosty/workbench-1024.png",
+    linuxIconPng: "assets/ghosty/workbench-1024.png",
+    windowsIconIco: "assets/ghosty/workbench-windows.ico",
   };
 }
 
@@ -2642,9 +2638,11 @@ export function resolvePackageManagerUserAgent(packageManager: string): string {
 }
 
 export function resolveDesktopProductName(version: string): string {
+  // Fork executable/installer identity: Ghosty Workbench.exe + Ghosty installer,
+  // never T3 Code.exe. desktopPackageJson.productName is "Ghosty Workbench".
   return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code (Nightly)"
-    : (desktopPackageJson.productName ?? "T3 Code");
+    ? "Ghosty Workbench (Nightly)"
+    : (desktopPackageJson.productName ?? "Ghosty Workbench");
 }
 
 export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
@@ -2669,7 +2667,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
-    artifactName: "T3-Code-${version}-${arch}.${ext}",
+    // Fork artifact file name: distinct from upstream T3-Code-* installers.
+    artifactName: "Ghosty-Workbench-${version}-${arch}.${ext}",
     electronLanguages: [...DESKTOP_ELECTRON_LANGUAGES],
     files: [
       ...DESKTOP_FILE_EXCLUSIONS,
@@ -2788,6 +2787,13 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     // Keep blockmap-based differential downloads enabled while changing the
     // installed file topology. The optimization is in the payload shape, not
     // in trading update bandwidth for install speed.
+    // Fork gap (documented): the personal Windows installer deliberately omits
+    // OS protocol associations for t3code:// / t3code-dev://, which remain owned
+    // by official T3. In-renderer transport schemes stay t3code:// for upstream
+    // compatibility; OS-level deep-link handling is out of scope for the fork.
+    // icon.ico is staged from assets/ghosty/workbench-windows.ico (see
+    // resolveDesktopBuildIconAssets), so the executable, taskbar, and installer
+    // use Ghosty art without colliding with official T3.
     buildConfig.nsis = { differentialPackage: true };
     const winConfig: Record<string, unknown> = {
       target: [target],
@@ -3664,13 +3670,16 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       ? path.join(stageAppDir, WINDOWS_SERVER_RESOURCE_SOURCE_DIR, WINDOWS_SERVER_ASAR_RESOURCE)
       : undefined;
   const stagePackageJson: StagePackageJson = {
+    // Internal stage name + t3codeCommitHash stay stable for upstream
+    // compatibility; only display identity (productName/appId/artifact/icons)
+    // is forked to Ghosty Workbench.
     name: "t3code",
     version: appVersion,
     buildVersion: appVersion,
     t3codeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
-    description: "T3 Code desktop build",
+    description: "Ghosty Workbench desktop build",
     author: "T3 Tools",
     main: "apps/desktop/dist-electron/main.cjs",
     build: yield* createBuildConfig(
